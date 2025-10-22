@@ -87,10 +87,10 @@ npm run dev
 
 ### 访问地址
 
-- 🎨 **管理后台**: http://localhost:5173
-- 📚 **API文档**: http://localhost:8080/api/v1/docs
-- 📊 **Prometheus**: http://localhost:8080/metrics
-- ❤️ **健康检查**: http://localhost:8080/health
+- 🎨 **管理后台**: http://localhost:18080
+- 📚 **API文档**: http://localhost:18081/api/v1/docs
+- 📊 **Prometheus**: http://localhost:18081/metrics
+- ❤️ **健康检查**: http://localhost:18081/health
 
 ---
 
@@ -168,7 +168,7 @@ POST /api/v1/interactions
 import httpx
 
 # 配置
-BASE_URL = "http://localhost:8080/api/v1"
+BASE_URL = "http://localhost:18081/api/v1"
 HEADERS = {
     "X-Tenant-Id": "demo_tenant",
     "X-User-Id": "user_001",
@@ -304,7 +304,8 @@ lemo_recommender/
 
 | 端口 | 服务 | 用途 | 环境 |
 |------|------|------|------|
-| 8080 | FastAPI | 推荐系统API | 开发 |
+| 18080 | Vue3前端 | 管理后台 | 开发 |
+| 18081 | FastAPI | 推荐系统API | 开发 |
 | 27017 | MongoDB | 业务数据 | 开发 |
 | 6379 | Redis | 缓存/队列 | 复用本地 |
 | 9092 | Kafka | 消息队列 | 复用本地 |

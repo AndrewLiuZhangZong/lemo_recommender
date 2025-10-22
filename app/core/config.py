@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     
     # 服务配置
     host: str = "0.0.0.0"
-    port: int = 8000
+    port: int = 18081
     workers: int = 4
     
     # MongoDB配置
