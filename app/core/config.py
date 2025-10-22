@@ -39,8 +39,11 @@ class Settings(BaseSettings):
     redis_max_connections: int = 50
     
     # Kafka配置
-    kafka_bootstrap_servers: List[str] = Field(default=["localhost:9093"])
+    kafka_bootstrap_servers: str = Field(default="localhost:9092")
     kafka_consumer_group: str = "lemo-recommender-group"
+    
+    # Kafka消费者Topic配置
+    kafka_item_ingest_topics: List[str] = Field(default=["items-ingest", "vlog-items", "news-items"])
     
     # 外部服务配置
     tenant_service_grpc_url: str = Field(default="localhost:9000")
@@ -79,10 +82,11 @@ class Settings(BaseSettings):
     # Celery配置
     celery_broker_url: str = Field(default="redis://:redis_password@localhost:6379/1")
     celery_result_backend: str = Field(default="redis://:redis_password@localhost:6379/2")
+    celery_enabled: bool = True  # 是否启用Celery异步任务
     
-    @field_validator("kafka_bootstrap_servers", mode="before")
+    @field_validator("kafka_item_ingest_topics", mode="before")
     @classmethod
-    def parse_kafka_servers(cls, v):
+    def parse_kafka_topics(cls, v):
         if isinstance(v, str):
             return [s.strip() for s in v.split(",")]
         return v

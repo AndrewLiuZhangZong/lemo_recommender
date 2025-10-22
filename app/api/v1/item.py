@@ -48,19 +48,42 @@ async def batch_create_items(
     tenant_id: str = Depends(get_tenant_id),
     db = Depends(get_mongodb)
 ):
-    """批量创建物品"""
+    """批量创建物品（支持API推送）"""
     
     service = ItemService(db)
     
     try:
+        # 1. 写入MongoDB
         count = await service.batch_create_items(
             tenant_id=tenant_id,
             scenario_id=data.scenario_id,
             items=data.items
         )
+        
+        # 2. 触发后续处理（Kafka事件、向量生成等）
+        from app.services.item.processor import ItemProcessor
+        from app.core.kafka import KafkaProducer
+        from app.core.config import settings
+        
+        kafka_producer = KafkaProducer(settings.kafka_bootstrap_servers)
+        await kafka_producer.start()
+        
+        processor = ItemProcessor(kafka_producer)
+        process_result = await processor.process_items(
+            tenant_id=tenant_id,
+            scenario_id=data.scenario_id,
+            items=data.items,
+            source="api"
+        )
+        
+        await kafka_producer.stop()
+        
         return ResponseModel(
-            message=f"成功创建{count}个物品",
-            data={"count": count}
+            message=f"成功创建{count}个物品，后续处理已启动",
+            data={
+                "count": count,
+                "processing": process_result
+            }
         )
     except Exception as e:
         raise HTTPException(
