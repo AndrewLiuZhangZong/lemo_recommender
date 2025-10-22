@@ -208,6 +208,7 @@ lemo_recommender/
 │   │   ├── interaction/     # 行为采集
 │   │   ├── recommendation/  # 推荐服务
 │   │   ├── experiment/      # AB实验服务
+│   │   ├── job_manager.py   # 作业管理服务（Flink/Celery统一管理）
 │   │   └── cache_manager.py # 缓存管理
 │   ├── engine/              # 推荐引擎
 │   │   ├── recall/          # 召回策略（热门、协同过滤、向量）
@@ -229,8 +230,13 @@ lemo_recommender/
 │   │   ├── item.py          # 物品API
 │   │   ├── interaction.py   # 行为API
 │   │   ├── recommendation.py # 推荐API
-│   │   ├── experiment.py    # 实验API
-│   │   └── admin.py         # 管理后台API
+│   │   ├── experiment.py    # AB实验API
+│   │   ├── admin.py         # 管理后台API
+│   │   ├── jobs.py          # 作业管理API（Flink/Celery）
+│   │   ├── model_training.py # 模型训练API
+│   │   ├── recall_config.py  # 召回策略配置API
+│   │   ├── model_management.py # 模型管理API
+│   │   └── feature_config.py  # 实时特征配置API
 │   ├── grpc_clients/        # gRPC客户端
 │   ├── core/                # 核心组件
 │   │   ├── config.py        # 配置管理
@@ -244,7 +250,17 @@ lemo_recommender/
 │       └── performance.py   # 性能优化工具
 ├── admin-frontend/          # 管理后台前端（Vue3 + Element Plus）
 │   ├── src/
-│   │   ├── views/          # 页面（仪表板、场景、物品、实验、分析）
+│   │   ├── views/          # 页面
+│   │   │   ├── Dashboard.vue       # 仪表板
+│   │   │   ├── Scenarios.vue       # 场景管理
+│   │   │   ├── Items.vue           # 物品管理
+│   │   │   ├── Experiments.vue     # AB实验
+│   │   │   ├── Analytics.vue       # 数据分析
+│   │   │   ├── Jobs.vue            # 作业管理（Flink/Celery）
+│   │   │   ├── ModelTraining.vue   # 模型训练
+│   │   │   ├── RecallConfig.vue    # 召回策略配置
+│   │   │   ├── ModelManagement.vue # 模型管理
+│   │   │   └── FeatureConfig.vue   # 实时特征配置
 │   │   ├── api/            # API封装
 │   │   └── router/         # 路由配置
 │   └── package.json
@@ -262,7 +278,9 @@ lemo_recommender/
 ├── k8s/                     # Kubernetes部署配置
 ├── scripts/                 # 脚本工具
 │   ├── init_db.py          # 数据库初始化
-│   └── init_milvus.py      # Milvus初始化
+│   ├── init_milvus.py      # Milvus初始化
+│   ├── run_item_consumer.py # 物品Kafka消费者
+│   └── run_flink_jobs.py   # Flink作业启动器（已被作业管理取代）
 ├── tests/                   # 测试
 ├── docker-compose.yml       # Docker Compose配置
 ├── Dockerfile              # Docker镜像
