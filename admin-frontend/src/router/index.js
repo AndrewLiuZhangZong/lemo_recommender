@@ -59,6 +59,12 @@ const routes = [
         name: 'ModelManagement',
         component: () => import('../views/ModelManagement.vue'),
         meta: { title: '模型管理' }
+      },
+      {
+        path: '/feature-config',
+        name: 'FeatureConfig',
+        component: () => import('../views/FeatureConfig.vue'),
+        meta: { title: '实时特征' }
       }
     ]
   }

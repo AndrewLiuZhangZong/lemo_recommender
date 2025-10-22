@@ -45,6 +45,10 @@
           <el-icon><Box /></el-icon>
           <span>模型管理</span>
         </el-menu-item>
+        <el-menu-item index="/feature-config">
+          <el-icon><DataLine /></el-icon>
+          <span>实时特征</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 
@@ -75,7 +79,7 @@
 </template>
 
 <script setup>
-import { Odometer, Setting, Document, Histogram, TrendCharts, Operation, MagicStick, Tools, Box, User } from '@element-plus/icons-vue'
+import { Odometer, Setting, Document, Histogram, TrendCharts, Operation, MagicStick, Tools, Box, DataLine, User } from '@element-plus/icons-vue'
 </script>
 
 <style scoped>
