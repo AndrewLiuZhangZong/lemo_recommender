@@ -29,6 +29,10 @@
           <el-icon><TrendCharts /></el-icon>
           <span>数据分析</span>
         </el-menu-item>
+        <el-menu-item index="/jobs">
+          <el-icon><Operation /></el-icon>
+          <span>作业管理</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 
@@ -59,7 +63,7 @@
 </template>
 
 <script setup>
-import { Odometer, Setting, Document, Histogram, TrendCharts, User } from '@element-plus/icons-vue'
+import { Odometer, Setting, Document, Histogram, TrendCharts, Operation, User } from '@element-plus/icons-vue'
 </script>
 
 <style scoped>

@@ -35,6 +35,12 @@ const routes = [
         name: 'Analytics',
         component: () => import('../views/Analytics.vue'),
         meta: { title: '数据分析' }
+      },
+      {
+        path: '/jobs',
+        name: 'Jobs',
+        component: () => import('../views/Jobs.vue'),
+        meta: { title: '作业管理' }
       }
     ]
   }
