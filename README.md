@@ -200,31 +200,77 @@ async with httpx.AsyncClient() as client:
 
 ---
 
-## 🏗️ 项目结构
+## 🏗️ 项目架构
+
+### 整体结构
 
 ```
 lemo_recommender/
-├── app/
-│   ├── models/              # 数据模型（Pydantic）
-│   ├── services/            # 业务逻辑层
-│   │   ├── scenario/        # 场景管理
-│   │   ├── item/            # 物品管理
-│   │   ├── interaction/     # 行为采集
-│   │   └── recommendation/  # 推荐服务
-│   ├── engine/              # 推荐引擎
-│   │   ├── recall/          # 召回策略
-│   │   ├── ranker/          # 排序模型
-│   │   └── reranker/        # 重排规则
-│   ├── api/v1/              # API路由
-│   └── core/                # 核心配置
-├── docs/                    # 文档
-│   ├── 系统设计.md
-│   ├── 开发计划.md
-│   └── 本地开发环境.md
-├── k8s/                     # Kubernetes配置
-├── tests/                   # 测试
-└── scripts/                 # 脚本工具
+├── app/                    # 应用主目录
+│   ├── models/            # 数据模型层（Pydantic）
+│   ├── services/          # 业务逻辑层
+│   │   ├── scenario/      # 场景管理
+│   │   ├── item/          # 物品管理
+│   │   ├── interaction/   # 行为采集
+│   │   └── recommendation/ # 推荐服务
+│   ├── engine/            # 推荐引擎
+│   │   ├── recall/        # 召回策略（协同过滤、热门、向量）
+│   │   ├── ranker/        # 排序模型
+│   │   └── reranker/      # 重排规则（多样性、新鲜度）
+│   ├── api/v1/            # API路由
+│   ├── grpc_clients/      # gRPC客户端（租户/用户服务）
+│   └── core/              # 核心配置（数据库、Redis）
+├── config/                 # 多环境配置
+│   ├── local.env          # 本地开发配置
+│   ├── test.env           # 测试环境配置
+│   └── prod.env           # 生产环境配置
+├── docs/                   # 文档
+│   ├── 系统设计.md         # 完整技术架构
+│   └── 开发计划.md         # 22周开发路线图
+├── k8s/                   # Kubernetes部署配置
+├── tests/                 # 测试
+└── scripts/               # 脚本工具
 ```
+
+### 微服务拆分（K8s生产环境）
+
+| 服务 | 端口 | 协议 | 职责 |
+|------|------|------|------|
+| **scenario-service** | 8001/9001 | HTTP+gRPC | 场景管理（CRUD、配置验证） |
+| **item-service** | 8002/9002 | HTTP+gRPC | 物品管理（CRUD、批量导入） |
+| **behavior-service** | 8003 | HTTP | 行为采集（上报、统计） |
+| **recommendation-service** | 8004 | HTTP | 推荐服务（流程编排） |
+| **feature-service** | 9005 | gRPC | 特征提取（在线特征） |
+| **model-service** | 9006 | gRPC | 模型服务（在线预测） |
+
+### 端口规划
+
+| 端口 | 服务 | 用途 | 环境 |
+|------|------|------|------|
+| 8080 | FastAPI | 推荐系统API | 开发 |
+| 27017 | MongoDB | 业务数据 | 开发 |
+| 6379 | Redis | 缓存/队列 | 复用本地 |
+| 9092 | Kafka | 消息队列 | 复用本地 |
+| 19530 | Milvus | 向量检索 | 复用本地 |
+| 9090 | Prometheus | 监控指标 | 可选 |
+| 3000 | Grafana | 可视化 | 可选 |
+
+### 环境配置
+
+支持多环境配置，通过 `ENV` 环境变量切换：
+
+```bash
+# 本地开发（默认）
+ENV=local poetry run python app/main.py
+
+# 测试环境
+ENV=test poetry run python app/main.py
+
+# 生产环境
+ENV=prod poetry run python app/main.py
+```
+
+配置文件: `config/local.env`, `config/test.env`, `config/prod.env`
 
 ---
 
@@ -299,9 +345,8 @@ poetry run pytest --cov=app --cov-report=html
 ## 📚 文档
 
 - [系统设计文档](docs/系统设计.md) - 完整的技术架构和设计
-- [开发计划](docs/开发计划.md) - 22周开发路线图
-- [本地开发环境](docs/本地开发环境.md) - 环境配置说明
-- [项目结构](STRUCTURE.md) - 目录结构说明
+- [开发计划](docs/开发计划.md) - 22周开发路线图（已完成第一阶段）
+- [K8s部署文档](k8s/README.md) - Kubernetes部署配置说明
 
 ---
 
