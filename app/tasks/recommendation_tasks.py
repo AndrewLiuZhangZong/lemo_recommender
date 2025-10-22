@@ -202,26 +202,64 @@ def cleanup_expired_cache():
     print("[Task] 清理过期缓存")
     
     redis = get_redis_client()
-    
-    # TODO: 实现缓存清理逻辑
-    # 1. 扫描特定前缀的key
-    # 2. 检查过期时间
-    # 3. 删除过期key
-    
-    # Redis会自动清理带TTL的key，这里可以做额外清理
+    if not redis:
+        print("[Task] Redis未配置，跳过缓存清理")
+        return {"cleaned_keys": 0, "timestamp": datetime.utcnow().isoformat()}
     
     cleaned_count = 0
+    patterns_to_clean = [
+        "rec:precomputed:*",     # 预计算推荐结果
+        "rec:result:*",          # 实时推荐结果
+        "user:profile:*",        # 用户画像
+        "item:hot:*",            # 热门物品
+        "scenario:config:*"      # 场景配置
+    ]
     
-    # 示例：清理rec:precomputed:*前缀的过期key
-    # cursor = 0
-    # while True:
-    #     cursor, keys = redis.scan(cursor, match="rec:precomputed:*", count=100)
-    #     for key in keys:
-    #         ttl = redis.ttl(key)
-    #         if ttl == -1:  # 没有设置过期时间
-    #             redis.expire(key, 3600 * 4)  # 设置4小时过期
-    #     if cursor == 0:
-    #         break
+    for pattern in patterns_to_clean:
+        cursor = 0
+        pattern_count = 0
+        
+        while True:
+            try:
+                # SCAN遍历匹配的key
+                cursor, keys = await redis.scan(cursor, match=pattern, count=100)
+                
+                for key in keys:
+                    if isinstance(key, bytes):
+                        key = key.decode('utf-8')
+                    
+                    # 检查TTL
+                    ttl = await redis.ttl(key)
+                    
+                    if ttl == -1:
+                        # 没有设置过期时间，设置默认过期时间
+                        if "precomputed" in key or "result" in key:
+                            await redis.expire(key, 3600 * 4)  # 4小时
+                        elif "profile" in key:
+                            await redis.expire(key, 3600 * 24)  # 24小时
+                        elif "hot" in key:
+                            await redis.expire(key, 3600)  # 1小时
+                        elif "config" in key:
+                            await redis.expire(key, 3600 * 12)  # 12小时
+                        pattern_count += 1
+                    
+                    elif ttl == -2:
+                        # Key已过期但未被删除
+                        await redis.delete(key)
+                        pattern_count += 1
+                
+                if cursor == 0:
+                    break
+                    
+            except Exception as e:
+                print(f"[Task] 清理{pattern}失败: {e}")
+                break
+        
+        if pattern_count > 0:
+            print(f"[Task] 清理{pattern}: {pattern_count}个key")
+        cleaned_count += pattern_count
+    
+    print(f"[Task] 缓存清理完成，共处理 {cleaned_count} 个key")
     
     return {
         "cleaned_keys": cleaned_count,

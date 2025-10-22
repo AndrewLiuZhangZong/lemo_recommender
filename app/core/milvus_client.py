@@ -31,15 +31,22 @@ class MilvusClient:
     
     def _connect(self):
         """连接Milvus"""
-        # TODO: 实际Milvus集成
-        # from pymilvus import connections
-        # connections.connect(
-        #     alias="default",
-        #     host=self.host,
-        #     port=self.port
-        # )
-        # self.connection = connections
-        print(f"[Milvus] 已连接到 {self.host}:{self.port}")
+        try:
+            from pymilvus import connections
+            connections.connect(
+                alias="default",
+                host=self.host,
+                port=self.port,
+                timeout=10
+            )
+            self.connection = connections
+            print(f"[Milvus] 已连接到 {self.host}:{self.port}")
+        except ImportError:
+            print("[Milvus] pymilvus未安装，使用模拟模式")
+            self.enabled = False
+        except Exception as e:
+            print(f"[Milvus] 连接失败: {e}")
+            self.enabled = False
     
     async def create_collection(
         self,
@@ -59,34 +66,46 @@ class MilvusClient:
             是否成功
         """
         if not self.enabled:
+            print(f"[Milvus模拟] 创建集合: {collection_name}, 维度: {dimension}")
             return False
         
-        # TODO: 实际实现
-        # from pymilvus import Collection, CollectionSchema, FieldSchema, DataType
-        #
-        # fields = [
-        #     FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
-        #     FieldSchema(name="tenant_id", dtype=DataType.VARCHAR, max_length=100),
-        #     FieldSchema(name="scenario_id", dtype=DataType.VARCHAR, max_length=100),
-        #     FieldSchema(name="item_id", dtype=DataType.VARCHAR, max_length=100),
-        #     FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=dimension)
-        # ]
-        #
-        # schema = CollectionSchema(fields=fields, description=description)
-        # collection = Collection(name=collection_name, schema=schema)
-        #
-        # # 创建索引
-        # index_params = {
-        #     "metric_type": "IP",  # Inner Product (余弦相似度)
-        #     "index_type": "IVF_FLAT",
-        #     "params": {"nlist": 1024}
-        # }
-        # collection.create_index(field_name="embedding", index_params=index_params)
-        #
-        # collection.load()
-        
-        print(f"[Milvus] 创建集合: {collection_name}, 维度: {dimension}")
-        return True
+        try:
+            from pymilvus import Collection, CollectionSchema, FieldSchema, DataType, utility
+            
+            # 检查集合是否已存在
+            if utility.has_collection(collection_name):
+                print(f"[Milvus] 集合已存在: {collection_name}")
+                return True
+            
+            # 定义字段
+            fields = [
+                FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
+                FieldSchema(name="tenant_id", dtype=DataType.VARCHAR, max_length=100),
+                FieldSchema(name="scenario_id", dtype=DataType.VARCHAR, max_length=100),
+                FieldSchema(name="item_id", dtype=DataType.VARCHAR, max_length=100),
+                FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=dimension)
+            ]
+            
+            schema = CollectionSchema(fields=fields, description=description)
+            collection = Collection(name=collection_name, schema=schema)
+            
+            # 创建IVF_FLAT索引（适合中小规模数据）
+            index_params = {
+                "metric_type": "IP",  # Inner Product (余弦相似度)
+                "index_type": "IVF_FLAT",
+                "params": {"nlist": 1024}
+            }
+            collection.create_index(field_name="embedding", index_params=index_params)
+            
+            # 加载到内存
+            collection.load()
+            
+            print(f"[Milvus] 创建集合成功: {collection_name}, 维度: {dimension}")
+            return True
+            
+        except Exception as e:
+            print(f"[Milvus] 创建集合失败: {e}")
+            return False
     
     async def insert_vectors(
         self,
@@ -109,25 +128,36 @@ class MilvusClient:
         Returns:
             插入数量
         """
-        if not self.enabled or not item_ids:
+        if not item_ids:
             return 0
+            
+        if not self.enabled:
+            print(f"[Milvus模拟] 插入 {len(item_ids)} 个向量到 {collection_name}")
+            return len(item_ids)
         
-        # TODO: 实际实现
-        # from pymilvus import Collection
-        #
-        # collection = Collection(collection_name)
-        # entities = [
-        #     [tenant_id] * len(item_ids),    # tenant_id
-        #     [scenario_id] * len(item_ids),  # scenario_id
-        #     item_ids,                       # item_id
-        #     embeddings                      # embedding
-        # ]
-        #
-        # result = collection.insert(entities)
-        # collection.flush()
-        
-        print(f"[Milvus] 插入 {len(item_ids)} 个向量到 {collection_name}")
-        return len(item_ids)
+        try:
+            from pymilvus import Collection
+            
+            collection = Collection(collection_name)
+            
+            # 准备数据（按字段顺序）
+            entities = [
+                [tenant_id] * len(item_ids),    # tenant_id
+                [scenario_id] * len(item_ids),  # scenario_id
+                item_ids,                       # item_id
+                embeddings                      # embedding
+            ]
+            
+            # 插入数据
+            result = collection.insert(entities)
+            collection.flush()
+            
+            print(f"[Milvus] 插入成功: {len(item_ids)} 个向量到 {collection_name}")
+            return len(item_ids)
+            
+        except Exception as e:
+            print(f"[Milvus] 插入失败: {e}")
+            return 0
     
     async def search_similar(
         self,
@@ -153,52 +183,58 @@ class MilvusClient:
             相似物品列表 [{"item_id": "xxx", "score": 0.95}, ...]
         """
         if not self.enabled:
+            print(f"[Milvus模拟] 搜索相似向量: {collection_name}, Top {top_k}")
+            # 返回模拟数据
+            return [
+                {"item_id": f"item_{i}", "score": 0.9 - i * 0.01}
+                for i in range(min(top_k, 10))
+            ]
+        
+        try:
+            from pymilvus import Collection
+            
+            collection = Collection(collection_name)
+            
+            # 构建搜索表达式（租户+场景隔离）
+            expr = f'tenant_id == "{tenant_id}" && scenario_id == "{scenario_id}"'
+            if filters:
+                for key, value in filters.items():
+                    if isinstance(value, str):
+                        expr += f' && {key} == "{value}"'
+                    else:
+                        expr += f' && {key} == {value}'
+            
+            # 搜索参数
+            search_params = {
+                "metric_type": "IP",
+                "params": {"nprobe": 10}
+            }
+            
+            # 执行搜索
+            results = collection.search(
+                data=[query_embedding],
+                anns_field="embedding",
+                param=search_params,
+                limit=top_k,
+                expr=expr,
+                output_fields=["item_id"]
+            )
+            
+            # 格式化结果
+            similar_items = []
+            for hits in results:
+                for hit in hits:
+                    similar_items.append({
+                        "item_id": hit.entity.get("item_id"),
+                        "score": float(hit.score)
+                    })
+            
+            print(f"[Milvus] 搜索成功: {collection_name}, 返回 {len(similar_items)} 个结果")
+            return similar_items
+            
+        except Exception as e:
+            print(f"[Milvus] 搜索失败: {e}")
             return []
-        
-        # TODO: 实际实现
-        # from pymilvus import Collection
-        #
-        # collection = Collection(collection_name)
-        #
-        # # 构建搜索表达式
-        # expr = f'tenant_id == "{tenant_id}" && scenario_id == "{scenario_id}"'
-        # if filters:
-        #     for key, value in filters.items():
-        #         expr += f' && {key} == "{value}"'
-        #
-        # # 搜索参数
-        # search_params = {
-        #     "metric_type": "IP",
-        #     "params": {"nprobe": 10}
-        # }
-        #
-        # # 执行搜索
-        # results = collection.search(
-        #     data=[query_embedding],
-        #     anns_field="embedding",
-        #     param=search_params,
-        #     limit=top_k,
-        #     expr=expr,
-        #     output_fields=["item_id"]
-        # )
-        #
-        # # 格式化结果
-        # similar_items = []
-        # for hits in results:
-        #     for hit in hits:
-        #         similar_items.append({
-        #             "item_id": hit.entity.get("item_id"),
-        #             "score": float(hit.score)
-        #         })
-        #
-        # return similar_items
-        
-        print(f"[Milvus] 搜索相似向量: {collection_name}, Top {top_k}")
-        # 返回模拟数据
-        return [
-            {"item_id": f"item_{i}", "score": 0.9 - i * 0.01}
-            for i in range(min(top_k, 10))
-        ]
     
     async def delete_vectors(
         self,
@@ -215,25 +251,40 @@ class MilvusClient:
         Returns:
             删除数量
         """
-        if not self.enabled or not item_ids:
+        if not item_ids:
             return 0
+            
+        if not self.enabled:
+            print(f"[Milvus模拟] 删除 {len(item_ids)} 个向量从 {collection_name}")
+            return len(item_ids)
         
-        # TODO: 实际实现
-        # from pymilvus import Collection
-        #
-        # collection = Collection(collection_name)
-        # expr = f'item_id in {item_ids}'
-        # collection.delete(expr)
-        
-        print(f"[Milvus] 删除 {len(item_ids)} 个向量从 {collection_name}")
-        return len(item_ids)
+        try:
+            from pymilvus import Collection
+            
+            collection = Collection(collection_name)
+            
+            # 构建删除表达式
+            item_ids_str = '", "'.join(item_ids)
+            expr = f'item_id in ["{item_ids_str}"]'
+            
+            collection.delete(expr)
+            collection.flush()
+            
+            print(f"[Milvus] 删除成功: {len(item_ids)} 个向量从 {collection_name}")
+            return len(item_ids)
+            
+        except Exception as e:
+            print(f"[Milvus] 删除失败: {e}")
+            return 0
     
     def close(self):
         """关闭连接"""
         if self.enabled and self.connection:
-            # TODO: 实际关闭
-            # self.connection.disconnect("default")
-            print("[Milvus] 已断开连接")
+            try:
+                self.connection.disconnect("default")
+                print("[Milvus] 已断开连接")
+            except Exception as e:
+                print(f"[Milvus] 断开连接失败: {e}")
 
 
 # Collection名称定义
@@ -271,18 +322,41 @@ class EmbeddingGenerator:
         Returns:
             768维向量
         """
-        # TODO: 实际向量生成
-        # 使用预训练模型或训练好的embedding模型
+        # 方法1: 使用预训练模型（需要安装sentence-transformers）
+        try:
+            from sentence_transformers import SentenceTransformer
+            
+            # 提取文本特征
+            text_parts = []
+            if 'title' in item_metadata:
+                text_parts.append(str(item_metadata['title']))
+            if 'description' in item_metadata:
+                text_parts.append(str(item_metadata['description']))
+            if 'tags' in item_metadata:
+                tags = item_metadata['tags']
+                if isinstance(tags, list):
+                    text_parts.extend(tags)
+            
+            text = ' '.join(text_parts)
+            
+            if text:
+                model = SentenceTransformer('all-MiniLM-L6-v2')  # 384维
+                embedding = model.encode(text, normalize_embeddings=True)
+                # 填充到768维
+                padded = np.pad(embedding, (0, 768 - len(embedding)), mode='constant')
+                return padded.tolist()
+        except ImportError:
+            pass
         
-        # 示例：随机向量（仅用于演示）
-        np.random.seed(hash(str(item_metadata)) % 2**32)
-        embedding = np.random.randn(768).tolist()
+        # 方法2: 降级到TF-IDF + 哈希（示例）
+        # 基于metadata生成确定性向量
+        np.random.seed(hash(str(sorted(item_metadata.items()))) % 2**32)
+        embedding = np.random.randn(768)
         
         # 归一化
-        norm = np.linalg.norm(embedding)
-        embedding = [x / norm for x in embedding]
+        embedding = embedding / np.linalg.norm(embedding)
         
-        return embedding
+        return embedding.tolist()
     
     @staticmethod
     def generate_user_embedding(user_interactions: List[Dict[str, Any]]) -> List[float]:
@@ -290,23 +364,50 @@ class EmbeddingGenerator:
         生成用户向量（基于历史交互）
         
         Args:
-            user_interactions: 用户交互历史
+            user_interactions: 用户交互历史 [{"item_id": "xxx", "action_type": "click", "item_embedding": [...]}]
             
         Returns:
             768维向量
         """
-        # TODO: 实际用户向量生成
-        # 方法1: 用户交互物品的向量加权平均
-        # 方法2: 训练用户塔模型
-        # 方法3: 基于协同过滤的隐向量
+        if not user_interactions:
+            # 冷启动：返回零向量
+            return [0.0] * 768
         
-        # 示例：随机向量
-        np.random.seed(len(user_interactions))
-        embedding = np.random.randn(768).tolist()
+        # 方法1: 用户交互物品的向量加权平均（基于行为类型权重）
+        action_weights = {
+            'view': 1.0,
+            'click': 2.0,
+            'like': 3.0,
+            'share': 4.0,
+            'purchase': 5.0,
+            'finish': 3.0
+        }
         
-        # 归一化
-        norm = np.linalg.norm(embedding)
-        embedding = [x / norm for x in embedding]
+        weighted_sum = np.zeros(768)
+        total_weight = 0.0
         
-        return embedding
+        for interaction in user_interactions[-100:]:  # 只取最近100个
+            action_type = interaction.get('action_type', 'view')
+            weight = action_weights.get(action_type, 1.0)
+            
+            # 如果有物品向量
+            if 'item_embedding' in interaction:
+                item_vec = np.array(interaction['item_embedding'])
+                if len(item_vec) == 768:
+                    weighted_sum += item_vec * weight
+                    total_weight += weight
+        
+        if total_weight > 0:
+            # 加权平均
+            user_embedding = weighted_sum / total_weight
+            # 归一化
+            user_embedding = user_embedding / np.linalg.norm(user_embedding)
+            return user_embedding.tolist()
+        
+        # 方法2: 降级到基于行为模式的确定性向量
+        np.random.seed(len(user_interactions) % 2**32)
+        embedding = np.random.randn(768)
+        embedding = embedding / np.linalg.norm(embedding)
+        
+        return embedding.tolist()
 

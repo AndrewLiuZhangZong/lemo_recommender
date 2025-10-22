@@ -12,24 +12,43 @@ class KafkaProducer:
     def __init__(self, bootstrap_servers: str):
         self.bootstrap_servers = bootstrap_servers
         self.producer = None
-        # TODO: 实际Kafka集成
-        # from aiokafka import AIOKafkaProducer
-        # self.producer = AIOKafkaProducer(
-        #     bootstrap_servers=bootstrap_servers,
-        #     value_serializer=lambda v: json.dumps(v).encode('utf-8')
-        # )
+        self._started = False
+        
+        try:
+            from aiokafka import AIOKafkaProducer
+            self.producer = AIOKafkaProducer(
+                bootstrap_servers=bootstrap_servers,
+                value_serializer=lambda v: json.dumps(v, ensure_ascii=False, default=str).encode('utf-8'),
+                key_serializer=lambda k: k.encode('utf-8') if k else None,
+                acks='all',  # 等待所有副本确认
+                retries=3,
+                max_in_flight_requests_per_connection=5,
+                compression_type='gzip'
+            )
+        except ImportError:
+            print("[Kafka] aiokafka未安装，使用模拟模式")
+            self.producer = None
     
     async def start(self):
         """启动生产者"""
-        # TODO: 实际启动
-        # await self.producer.start()
-        pass
+        if self.producer and not self._started:
+            try:
+                await self.producer.start()
+                self._started = True
+                print(f"[Kafka] Producer已启动: {self.bootstrap_servers}")
+            except Exception as e:
+                print(f"[Kafka] Producer启动失败: {e}")
+                self.producer = None
     
     async def stop(self):
         """停止生产者"""
-        # TODO: 实际停止
-        # await self.producer.stop()
-        pass
+        if self.producer and self._started:
+            try:
+                await self.producer.stop()
+                self._started = False
+                print("[Kafka] Producer已停止")
+            except Exception as e:
+                print(f"[Kafka] Producer停止失败: {e}")
     
     async def send(
         self,
@@ -46,19 +65,18 @@ class KafkaProducer:
             key: 消息key（可选，用于分区）
         """
         try:
-            # TODO: 实际发送
-            # await self.producer.send(
-            #     topic,
-            #     value=value,
-            #     key=key.encode('utf-8') if key else None
-            # )
-            
-            # 开发阶段：仅打印日志
-            print(f"[Kafka] 发送消息到 {topic}: {json.dumps(value, ensure_ascii=False)[:100]}")
+            if self.producer and self._started:
+                # 实际发送
+                await self.producer.send(topic, value=value, key=key)
+                print(f"[Kafka] 发送成功 → {topic}: {json.dumps(value, ensure_ascii=False)[:80]}...")
+            else:
+                # 模拟模式：仅打印日志
+                print(f"[Kafka模拟] 发送消息到 {topic}: {json.dumps(value, ensure_ascii=False)[:100]}")
             
         except Exception as e:
             print(f"[Kafka] 发送失败: {e}")
-            raise
+            # 降级：不阻塞主流程
+            pass
 
 
 class KafkaConsumer:
@@ -74,26 +92,43 @@ class KafkaConsumer:
         self.bootstrap_servers = bootstrap_servers
         self.group_id = group_id
         self.consumer = None
-        # TODO: 实际Kafka集成
-        # from aiokafka import AIOKafkaConsumer
-        # self.consumer = AIOKafkaConsumer(
-        #     *topics,
-        #     bootstrap_servers=bootstrap_servers,
-        #     group_id=group_id,
-        #     value_deserializer=lambda m: json.loads(m.decode('utf-8'))
-        # )
+        self._started = False
+        
+        try:
+            from aiokafka import AIOKafkaConsumer
+            self.consumer = AIOKafkaConsumer(
+                *topics,
+                bootstrap_servers=bootstrap_servers,
+                group_id=group_id,
+                value_deserializer=lambda m: json.loads(m.decode('utf-8')),
+                auto_offset_reset='latest',  # 从最新消息开始
+                enable_auto_commit=True,
+                max_poll_records=100
+            )
+        except ImportError:
+            print("[Kafka] aiokafka未安装，使用模拟模式")
+            self.consumer = None
     
     async def start(self):
         """启动消费者"""
-        # TODO: 实际启动
-        # await self.consumer.start()
-        pass
+        if self.consumer and not self._started:
+            try:
+                await self.consumer.start()
+                self._started = True
+                print(f"[Kafka] Consumer已启动: {self.topics} @ {self.group_id}")
+            except Exception as e:
+                print(f"[Kafka] Consumer启动失败: {e}")
+                self.consumer = None
     
     async def stop(self):
         """停止消费者"""
-        # TODO: 实际停止
-        # await self.consumer.stop()
-        pass
+        if self.consumer and self._started:
+            try:
+                await self.consumer.stop()
+                self._started = False
+                print("[Kafka] Consumer已停止")
+            except Exception as e:
+                print(f"[Kafka] Consumer停止失败: {e}")
     
     async def consume(self):
         """
@@ -102,10 +137,22 @@ class KafkaConsumer:
         Yields:
             消息字典
         """
-        # TODO: 实际消费
-        # async for msg in self.consumer:
-        #     yield msg.value
-        pass
+        if not self.consumer or not self._started:
+            print("[Kafka] Consumer未启动，无法消费")
+            return
+        
+        try:
+            async for msg in self.consumer:
+                yield {
+                    'topic': msg.topic,
+                    'partition': msg.partition,
+                    'offset': msg.offset,
+                    'key': msg.key.decode('utf-8') if msg.key else None,
+                    'value': msg.value,
+                    'timestamp': msg.timestamp
+                }
+        except Exception as e:
+            print(f"[Kafka] 消费失败: {e}")
 
 
 # Kafka Topic定义

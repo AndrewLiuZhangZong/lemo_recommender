@@ -11,9 +11,21 @@ class TenantServiceClient:
     def __init__(self, grpc_url: str, redis_client=None):
         self.grpc_url = grpc_url
         self.redis = redis_client
-        # TODO: 初始化gRPC连接
-        # self.channel = grpc.aio.insecure_channel(grpc_url)
-        # self.stub = TenantServiceStub(self.channel)
+        self.channel = None
+        self.stub = None
+        self.enabled = False
+        
+        # 尝试初始化gRPC连接
+        try:
+            import grpc
+            self.channel = grpc.aio.insecure_channel(grpc_url)
+            # self.stub = TenantServiceStub(self.channel)  # 等待.proto文件定义
+            print(f"[gRPC] 租户服务客户端已初始化: {grpc_url}")
+            self.enabled = True
+        except ImportError:
+            print("[gRPC] grpcio未安装，使用模拟模式")
+        except Exception as e:
+            print(f"[gRPC] 租户服务连接失败: {e}")
     
     async def get_tenant_config(self, tenant_id: str) -> Optional[dict]:
         """
@@ -33,12 +45,23 @@ class TenantServiceClient:
             if cached:
                 return cached
         
-        # TODO: 调用gRPC接口
-        # request = GetTenantConfigRequest(tenant_id=tenant_id)
-        # response = await self.stub.GetTenantConfig(request, timeout=5.0)
+        # 调用gRPC接口
+        if self.enabled and self.stub:
+            try:
+                # request = GetTenantConfigRequest(tenant_id=tenant_id)
+                # response = await self.stub.GetTenantConfig(request, timeout=5.0)
+                # tenant_config = {
+                #     "tenant_id": response.tenant_id,
+                #     "tenant_name": response.tenant_name,
+                #     "status": response.status,
+                #     "quota": response.quota
+                # }
+                print(f"[gRPC] 调用租户服务: get_tenant_config({tenant_id})")
+            except Exception as e:
+                print(f"[gRPC] 租户服务调用失败: {e}")
         
-        # 临时模拟数据（等待实际gRPC服务）
-        mock_config = {
+        # 模拟数据（在gRPC服务未就绪时使用）
+        tenant_config = {
             "tenant_id": tenant_id,
             "tenant_name": f"Tenant-{tenant_id}",
             "status": "active",
@@ -52,9 +75,9 @@ class TenantServiceClient:
         # 写入缓存
         if self.redis:
             cache_key = f"tenant:config:{tenant_id}"
-            await self._set_to_cache(cache_key, mock_config, ttl=3600)
+            await self._set_to_cache(cache_key, tenant_config, ttl=3600)
         
-        return mock_config
+        return tenant_config
     
     async def validate_tenant(self, tenant_id: str) -> bool:
         """
@@ -71,28 +94,36 @@ class TenantServiceClient:
     
     async def _get_from_cache(self, key: str) -> Optional[dict]:
         """从Redis缓存获取"""
+        if not self.redis:
+            return None
+            
         try:
-            # TODO: 实际Redis实现
-            # value = await self.redis.get(key)
-            # if value:
-            #     return json.loads(value)
+            value = await self.redis.get(key)
+            if value:
+                if isinstance(value, bytes):
+                    value = value.decode('utf-8')
+                return json.loads(value)
             return None
         except Exception as e:
-            print(f"Redis读取失败: {e}")
+            print(f"[Redis] 读取失败: {e}")
             return None
     
     async def _set_to_cache(self, key: str, value: dict, ttl: int = 3600):
         """写入Redis缓存"""
+        if not self.redis:
+            return
+            
         try:
-            # TODO: 实际Redis实现
-            # await self.redis.setex(key, ttl, json.dumps(value))
-            pass
+            await self.redis.setex(key, ttl, json.dumps(value, ensure_ascii=False))
         except Exception as e:
-            print(f"Redis写入失败: {e}")
+            print(f"[Redis] 写入失败: {e}")
     
     async def close(self):
         """关闭gRPC连接"""
-        # TODO: 关闭channel
-        # await self.channel.close()
-        pass
+        if self.channel:
+            try:
+                await self.channel.close()
+                print("[gRPC] 租户服务连接已关闭")
+            except Exception as e:
+                print(f"[gRPC] 关闭连接失败: {e}")
 

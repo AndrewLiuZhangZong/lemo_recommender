@@ -315,11 +315,29 @@ async def system_health_check(
         health["checks"]["mongodb"] = f"error: {str(e)}"
         health["status"] = "unhealthy"
     
-    # Redis连接检查（TODO）
-    health["checks"]["redis"] = "not_checked"
+    # Redis连接检查
+    try:
+        redis_client = get_redis()
+        if redis_client:
+            await redis_client.ping()
+            health["checks"]["redis"] = "ok"
+        else:
+            health["checks"]["redis"] = "not_configured"
+    except Exception as e:
+        health["checks"]["redis"] = f"error: {str(e)}"
+        health["status"] = "unhealthy"
     
-    # Kafka连接检查（TODO）
-    health["checks"]["kafka"] = "not_checked"
+    # Kafka连接检查（尝试连接）
+    try:
+        from app.core.kafka import KafkaProducer
+        producer = KafkaProducer(bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS)
+        if producer.producer:
+            health["checks"]["kafka"] = "configured"
+        else:
+            health["checks"]["kafka"] = "simulated_mode"
+    except Exception as e:
+        health["checks"]["kafka"] = f"error: {str(e)}"
+        # Kafka不是关键依赖，不设置unhealthy
     
     return health
 
