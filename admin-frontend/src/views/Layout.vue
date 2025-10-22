@@ -41,6 +41,10 @@
           <el-icon><Tools /></el-icon>
           <span>召回配置</span>
         </el-menu-item>
+        <el-menu-item index="/model-management">
+          <el-icon><Box /></el-icon>
+          <span>模型管理</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 
@@ -71,7 +75,7 @@
 </template>
 
 <script setup>
-import { Odometer, Setting, Document, Histogram, TrendCharts, Operation, MagicStick, Tools, User } from '@element-plus/icons-vue'
+import { Odometer, Setting, Document, Histogram, TrendCharts, Operation, MagicStick, Tools, Box, User } from '@element-plus/icons-vue'
 </script>
 
 <style scoped>

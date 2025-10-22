@@ -53,6 +53,12 @@ const routes = [
         name: 'RecallConfig',
         component: () => import('../views/RecallConfig.vue'),
         meta: { title: '召回配置' }
+      },
+      {
+        path: '/model-management',
+        name: 'ModelManagement',
+        component: () => import('../views/ModelManagement.vue'),
+        meta: { title: '模型管理' }
       }
     ]
   }
