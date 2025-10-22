@@ -41,6 +41,12 @@ const routes = [
         name: 'Jobs',
         component: () => import('../views/Jobs.vue'),
         meta: { title: '作业管理' }
+      },
+      {
+        path: '/model-training',
+        name: 'ModelTraining',
+        component: () => import('../views/ModelTraining.vue'),
+        meta: { title: '模型训练' }
       }
     ]
   }

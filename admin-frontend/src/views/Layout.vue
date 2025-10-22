@@ -33,6 +33,10 @@
           <el-icon><Operation /></el-icon>
           <span>作业管理</span>
         </el-menu-item>
+        <el-menu-item index="/model-training">
+          <el-icon><MagicStick /></el-icon>
+          <span>模型训练</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 
@@ -63,7 +67,7 @@
 </template>
 
 <script setup>
-import { Odometer, Setting, Document, Histogram, TrendCharts, Operation, User } from '@element-plus/icons-vue'
+import { Odometer, Setting, Document, Histogram, TrendCharts, Operation, MagicStick, User } from '@element-plus/icons-vue'
 </script>
 
 <style scoped>

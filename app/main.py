@@ -47,7 +47,7 @@ def create_app() -> FastAPI:
     )
     
     # 注册路由
-    from app.api.v1 import scenario, item, interaction, recommendation, admin, experiment, jobs
+    from app.api.v1 import scenario, item, interaction, recommendation, admin, experiment, jobs, model_training
     
     app.include_router(
         scenario.router,
@@ -89,6 +89,12 @@ def create_app() -> FastAPI:
         jobs.router,
         prefix=f"{settings.api_prefix}/jobs",
         tags=["作业管理"]
+    )
+    
+    app.include_router(
+        model_training.router,
+        prefix=f"{settings.api_prefix}/model-training",
+        tags=["模型训练"]
     )
     
     @app.get("/")
