@@ -87,7 +87,7 @@ npm run dev
 
 ### 访问地址
 
-- 🎨 **管理后台**: http://localhost:3000
+- 🎨 **管理后台**: http://localhost:5173
 - 📚 **API文档**: http://localhost:8080/api/v1/docs
 - 📊 **Prometheus**: http://localhost:8080/metrics
 - ❤️ **健康检查**: http://localhost:8080/health
