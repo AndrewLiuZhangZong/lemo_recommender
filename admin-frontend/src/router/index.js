@@ -47,6 +47,12 @@ const routes = [
         name: 'ModelTraining',
         component: () => import('../views/ModelTraining.vue'),
         meta: { title: '模型训练' }
+      },
+      {
+        path: '/recall-config',
+        name: 'RecallConfig',
+        component: () => import('../views/RecallConfig.vue'),
+        meta: { title: '召回配置' }
       }
     ]
   }

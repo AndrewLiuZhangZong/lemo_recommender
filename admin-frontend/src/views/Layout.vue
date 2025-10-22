@@ -37,6 +37,10 @@
           <el-icon><MagicStick /></el-icon>
           <span>模型训练</span>
         </el-menu-item>
+        <el-menu-item index="/recall-config">
+          <el-icon><Tools /></el-icon>
+          <span>召回配置</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 
@@ -67,7 +71,7 @@
 </template>
 
 <script setup>
-import { Odometer, Setting, Document, Histogram, TrendCharts, Operation, MagicStick, User } from '@element-plus/icons-vue'
+import { Odometer, Setting, Document, Histogram, TrendCharts, Operation, MagicStick, Tools, User } from '@element-plus/icons-vue'
 </script>
 
 <style scoped>

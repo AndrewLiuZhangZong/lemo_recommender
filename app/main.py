@@ -47,7 +47,7 @@ def create_app() -> FastAPI:
     )
     
     # 注册路由
-    from app.api.v1 import scenario, item, interaction, recommendation, admin, experiment, jobs, model_training
+    from app.api.v1 import scenario, item, interaction, recommendation, admin, experiment, jobs, model_training, recall_config
     
     app.include_router(
         scenario.router,
@@ -95,6 +95,12 @@ def create_app() -> FastAPI:
         model_training.router,
         prefix=f"{settings.api_prefix}/model-training",
         tags=["模型训练"]
+    )
+    
+    app.include_router(
+        recall_config.router,
+        prefix=f"{settings.api_prefix}/recall-config",
+        tags=["召回配置"]
     )
     
     @app.get("/")
