@@ -1,7 +1,7 @@
 """
 用户行为模型
 """
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 from pydantic import BaseModel, Field
 from datetime import datetime
 from enum import Enum

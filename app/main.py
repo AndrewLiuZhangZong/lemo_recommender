@@ -128,11 +128,20 @@ def create_app() -> FastAPI:
     async def health_check():
         """健康检查"""
         try:
+            health_status = {"status": "healthy"}
+            
             # 检查MongoDB
             await mongodb.client.admin.command('ping')
-            # 检查Redis
-            await redis_client.client.ping()
-            return {"status": "healthy", "mongodb": "ok", "redis": "ok"}
+            health_status["mongodb"] = "ok"
+            
+            # 检查Redis（可选）
+            if redis_client.client:
+                await redis_client.client.ping()
+                health_status["redis"] = "ok"
+            else:
+                health_status["redis"] = "disabled"
+            
+            return health_status
         except Exception as e:
             return JSONResponse(
                 status_code=503,

@@ -4,7 +4,7 @@
 from fastapi import APIRouter, Depends, Query
 from typing import List, Optional
 from datetime import datetime, timedelta
-from app.api.dependencies import get_database, get_tenant_user_context
+from app.api.dependencies import get_mongodb, get_tenant_user_context
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 async def get_dashboard_overview(
     scenario_id: Optional[str] = None,
     days: int = Query(7, ge=1, le=90),
-    db=Depends(get_database),
+    db=Depends(get_mongodb),
     context=Depends(get_tenant_user_context)
 ):
     """
@@ -80,7 +80,7 @@ async def get_dashboard_overview(
 async def get_metrics_trends(
     scenario_id: Optional[str] = None,
     days: int = Query(7, ge=1, le=90),
-    db=Depends(get_database),
+    db=Depends(get_mongodb),
     context=Depends(get_tenant_user_context)
 ):
     """获取指标趋势（按天聚合）"""
@@ -139,7 +139,7 @@ async def get_metrics_trends(
 @router.get("/items/distribution")
 async def get_items_distribution(
     scenario_id: str,
-    db=Depends(get_database),
+    db=Depends(get_mongodb),
     context=Depends(get_tenant_user_context)
 ):
     """获取物品分布统计"""
@@ -178,7 +178,7 @@ async def get_items_distribution(
 async def get_user_behavior_analysis(
     scenario_id: str,
     days: int = Query(7, ge=1, le=90),
-    db=Depends(get_database),
+    db=Depends(get_mongodb),
     context=Depends(get_tenant_user_context)
 ):
     """用户行为分析"""
@@ -249,7 +249,7 @@ async def export_data(
     scenario_id: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    db=Depends(get_database),
+    db=Depends(get_mongodb),
     context=Depends(get_tenant_user_context)
 ):
     """
@@ -299,7 +299,7 @@ async def export_data(
 
 @router.get("/system/health")
 async def system_health_check(
-    db=Depends(get_database)
+    db=Depends(get_mongodb)
 ):
     """系统健康检查"""
     health = {
@@ -344,7 +344,7 @@ async def system_health_check(
 
 @router.get("/experiments/summary")
 async def get_experiments_summary(
-    db=Depends(get_database),
+    db=Depends(get_mongodb),
     context=Depends(get_tenant_user_context)
 ):
     """实验汇总"""

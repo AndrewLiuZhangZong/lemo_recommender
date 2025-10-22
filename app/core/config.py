@@ -2,16 +2,22 @@
 应用配置管理
 使用 pydantic-settings 管理配置，支持环境变量
 """
+import os
 from typing import List, Optional
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+# 根据ENV环境变量确定配置文件
+ENV = os.getenv("ENV", "local")
+env_file = f"config/{ENV}.env"
 
 
 class Settings(BaseSettings):
     """应用配置"""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=env_file,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -36,6 +42,7 @@ class Settings(BaseSettings):
     
     # Redis配置
     redis_url: str = Field(default="redis://:redis_password@localhost:6379/0")
+    redis_password: str = Field(default="")
     redis_max_connections: int = 50
     
     # Kafka配置

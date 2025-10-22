@@ -9,7 +9,7 @@ from app.models.experiment import (
     ExperimentResult
 )
 from app.services.experiment.service import ExperimentService
-from app.api.dependencies import get_database, get_tenant_user_context
+from app.api.dependencies import get_mongodb, get_tenant_user_context
 
 
 router = APIRouter(prefix="/experiments", tags=["experiments"])
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/experiments", tags=["experiments"])
 @router.post("", response_model=Experiment, status_code=status.HTTP_201_CREATED)
 async def create_experiment(
     experiment: Experiment,
-    db=Depends(get_database),
+    db=Depends(get_mongodb),
     context=Depends(get_tenant_user_context)
 ):
     """
@@ -74,7 +74,7 @@ async def create_experiment(
 async def list_experiments(
     scenario_id: Optional[str] = None,
     status: Optional[ExperimentStatus] = None,
-    db=Depends(get_database),
+    db=Depends(get_mongodb),
     context=Depends(get_tenant_user_context)
 ):
     """列出AB实验"""
@@ -93,7 +93,7 @@ async def list_experiments(
 @router.get("/{experiment_id}", response_model=Experiment)
 async def get_experiment(
     experiment_id: str,
-    db=Depends(get_database),
+    db=Depends(get_mongodb),
     context=Depends(get_tenant_user_context)
 ):
     """获取实验详情"""
@@ -111,7 +111,7 @@ async def get_experiment(
 @router.post("/{experiment_id}/start", response_model=Experiment)
 async def start_experiment(
     experiment_id: str,
-    db=Depends(get_database),
+    db=Depends(get_mongodb),
     context=Depends(get_tenant_user_context)
 ):
     """启动实验"""
@@ -128,7 +128,7 @@ async def start_experiment(
 @router.post("/{experiment_id}/stop", response_model=Experiment)
 async def stop_experiment(
     experiment_id: str,
-    db=Depends(get_database),
+    db=Depends(get_mongodb),
     context=Depends(get_tenant_user_context)
 ):
     """停止实验"""
@@ -145,7 +145,7 @@ async def stop_experiment(
 @router.get("/{experiment_id}/results", response_model=List[ExperimentResult])
 async def get_experiment_results(
     experiment_id: str,
-    db=Depends(get_database),
+    db=Depends(get_mongodb),
     context=Depends(get_tenant_user_context)
 ):
     """
@@ -203,7 +203,7 @@ async def get_experiment_results(
 async def assign_user_to_variant(
     experiment_id: str,
     user_id: str,
-    db=Depends(get_database),
+    db=Depends(get_mongodb),
     context=Depends(get_tenant_user_context)
 ):
     """
