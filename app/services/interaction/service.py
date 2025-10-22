@@ -181,7 +181,10 @@ class InteractionService:
         }
     
     async def _send_to_kafka(self, tenant_id: str, interaction: Interaction):
-        """发送行为数据到Kafka"""
+        """发送行为数据到Kafka（实时流处理）"""
+        
+        if not self.kafka_producer:
+            return
         
         try:
             # Kafka Topic: user-behaviors-{tenant_id}
@@ -193,18 +196,22 @@ class InteractionService:
                 "scenario_id": interaction.scenario_id,
                 "user_id": interaction.user_id,
                 "item_id": interaction.item_id,
-                "action_type": interaction.action_type.value,
-                "context": interaction.context,
-                "extra": interaction.extra,
-                "timestamp": interaction.timestamp.isoformat()
+                "action_type": interaction.action_type.value if hasattr(interaction.action_type, 'value') else str(interaction.action_type),
+                "context": interaction.context or {},
+                "extra": interaction.extra or {},
+                "timestamp": interaction.timestamp.isoformat() if hasattr(interaction.timestamp, 'isoformat') else str(interaction.timestamp)
             }
             
-            # 发送（异步）
-            # await self.kafka_producer.send(topic, value=message)
+            # 发送到Kafka（异步，不阻塞主流程）
+            await self.kafka_producer.send(
+                topic=topic,
+                value=message,
+                key=interaction.user_id  # 使用user_id作为key，保证同一用户消息有序
+            )
             
-            # TODO: 实际Kafka集成
-            pass
+            print(f"[Kafka] 发送用户行为: {topic} - {interaction.user_id}/{interaction.action_type}")
+            
         except Exception as e:
-            # 记录错误但不影响主流程
-            print(f"Kafka发送失败: {e}")
+            # 记录错误但不影响主流程（Kafka失败不应阻塞业务）
+            print(f"[Kafka] 发送失败: {e}")
 

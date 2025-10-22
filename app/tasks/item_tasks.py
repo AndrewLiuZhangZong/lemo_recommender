@@ -131,24 +131,139 @@ def compute_item_similarity(self, tenant_id: str = None, scenario_id: str = None
     }
 
 
+@celery_app.task(name="app.tasks.item_tasks.generate_item_embeddings")
+def generate_item_embeddings(tenant_id: str, scenario_id: str, item_ids: List[str]):
+    """
+    生成物品向量并写入Milvus（用于向量召回）
+    
+    Args:
+        tenant_id: 租户ID
+        scenario_id: 场景ID
+        item_ids: 物品ID列表
+    """
+    if not item_ids:
+        return {"updated_count": 0}
+    
+    print(f"[Task] 生成物品向量: {tenant_id}/{scenario_id}, 数量: {len(item_ids)}")
+    
+    from app.core.database import get_database
+    from app.core.milvus_client import MilvusClient, MilvusCollections, EmbeddingGenerator
+    from app.core.config import settings
+    
+    db = get_database()
+    
+    # 1. 从MongoDB读取物品元数据
+    items = list(db.items.find({
+        "tenant_id": tenant_id,
+        "scenario_id": scenario_id,
+        "item_id": {"$in": item_ids}
+    }))
+    
+    if not items:
+        print(f"  未找到物品数据")
+        return {"updated_count": 0}
+    
+    print(f"  查询到物品数: {len(items)}")
+    
+    # 2. 初始化Milvus客户端
+    milvus_client = MilvusClient(
+        host=settings.milvus_host,
+        port=settings.milvus_port,
+        enabled=settings.milvus_enabled
+    )
+    
+    if not milvus_client.enabled:
+        print(f"  Milvus未启用，跳过向量生成")
+        return {"updated_count": 0, "milvus_enabled": False}
+    
+    # 3. 获取场景类型（确定collection名称）
+    scenario = db.scenarios.find_one({
+        "tenant_id": tenant_id,
+        "scenario_id": scenario_id
+    })
+    
+    scenario_type = scenario.get("scenario_type", "default") if scenario else "default"
+    collection_name = MilvusCollections.items_embeddings(scenario_type)
+    
+    # 4. 生成向量
+    item_ids_for_milvus = []
+    embeddings = []
+    
+    for item in items:
+        try:
+            # 使用EmbeddingGenerator生成向量
+            embedding = EmbeddingGenerator.generate_item_embedding(item.get("metadata", {}))
+            
+            item_ids_for_milvus.append(item["item_id"])
+            embeddings.append(embedding)
+            
+        except Exception as e:
+            print(f"  生成向量失败 {item['item_id']}: {e}")
+            continue
+    
+    if not embeddings:
+        print(f"  无向量生成")
+        return {"updated_count": 0}
+    
+    print(f"  成功生成向量数: {len(embeddings)}")
+    
+    # 5. 写入Milvus
+    try:
+        # 确保collection存在
+        import asyncio
+        asyncio.run(milvus_client.create_collection(
+            collection_name=collection_name,
+            dimension=768,
+            description=f"Items embeddings for {scenario_type}"
+        ))
+        
+        # 批量插入向量
+        inserted_count = asyncio.run(milvus_client.insert_vectors(
+            collection_name=collection_name,
+            tenant_id=tenant_id,
+            scenario_id=scenario_id,
+            item_ids=item_ids_for_milvus,
+            embeddings=embeddings
+        ))
+        
+        print(f"  ✅ 写入Milvus成功: {inserted_count}个向量")
+        
+        # 6. 更新MongoDB中的embedding字段（可选，用于调试）
+        for item_id, embedding in zip(item_ids_for_milvus, embeddings):
+            db.items.update_one(
+                {"tenant_id": tenant_id, "scenario_id": scenario_id, "item_id": item_id},
+                {"$set": {"embedding": embedding[:10], "embedding_updated_at": datetime.utcnow()}}  # 只存前10维用于展示
+            )
+        
+        return {
+            "tenant_id": tenant_id,
+            "scenario_id": scenario_id,
+            "collection_name": collection_name,
+            "updated_count": inserted_count,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"  ❌ 写入Milvus失败: {e}")
+        return {
+            "updated_count": 0,
+            "error": str(e)
+        }
+
+
 @celery_app.task(name="app.tasks.item_tasks.update_item_embeddings")
 def update_item_embeddings(tenant_id: str, scenario_id: str, item_ids: List[str] = None):
     """
-    更新物品向量（用于向量召回）
+    批量更新物品向量（定时任务用）
     
     Args:
         tenant_id: 租户ID
         scenario_id: 场景ID
         item_ids: 物品ID列表（可选，不指定则更新所有）
     """
-    print(f"[Task] 更新物品向量: {tenant_id}/{scenario_id}")
+    print(f"[Task] 批量更新物品向量: {tenant_id}/{scenario_id}")
     
     db = get_database()
-    
-    # TODO: 实际Milvus集成后实现
-    # 1. 从MongoDB读取物品元数据
-    # 2. 使用Embedding模型生成向量
-    # 3. 写入Milvus
     
     # 查询物品
     query = {"tenant_id": tenant_id, "scenario_id": scenario_id}
@@ -157,19 +272,14 @@ def update_item_embeddings(tenant_id: str, scenario_id: str, item_ids: List[str]
     
     items = list(db.items.find(query).limit(1000))
     
-    print(f"  待更新物品数: {len(items)}")
+    if not items:
+        print(f"  未找到物品")
+        return {"updated_count": 0}
     
-    # 模拟向量生成和存储
-    for item in items:
-        # embedding = generate_embedding(item["metadata"])
-        # milvus.insert(embedding)
-        pass
+    item_ids_to_update = [item["item_id"] for item in items]
     
-    return {
-        "tenant_id": tenant_id,
-        "scenario_id": scenario_id,
-        "updated_count": len(items)
-    }
+    # 调用generate_item_embeddings处理
+    return generate_item_embeddings(tenant_id, scenario_id, item_ids_to_update)
 
 
 @celery_app.task(name="app.tasks.item_tasks.cleanup_inactive_items")

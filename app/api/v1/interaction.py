@@ -28,7 +28,14 @@ async def record_interaction(
 ):
     """记录用户行为"""
     
-    service = InteractionService(db)
+    # 初始化Kafka生产者（用于实时流处理）
+    from app.core.kafka import KafkaProducer
+    from app.core.config import settings
+    
+    kafka_producer = KafkaProducer(settings.kafka_bootstrap_servers)
+    await kafka_producer.start()
+    
+    service = InteractionService(db, kafka_producer)
     
     try:
         interaction = await service.record_interaction(tenant_id, data)
@@ -38,6 +45,8 @@ async def record_interaction(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    finally:
+        await kafka_producer.stop()
 
 
 @router.post("/batch", response_model=ResponseModel)
@@ -48,7 +57,14 @@ async def batch_record_interactions(
 ):
     """批量记录用户行为"""
     
-    service = InteractionService(db)
+    # 初始化Kafka生产者（用于实时流处理）
+    from app.core.kafka import KafkaProducer
+    from app.core.config import settings
+    
+    kafka_producer = KafkaProducer(settings.kafka_bootstrap_servers)
+    await kafka_producer.start()
+    
+    service = InteractionService(db, kafka_producer)
     
     try:
         count = await service.batch_record_interactions(
@@ -64,6 +80,8 @@ async def batch_record_interactions(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    finally:
+        await kafka_producer.stop()
 
 
 @router.get("/user/{user_id}", response_model=List[InteractionResponse])
