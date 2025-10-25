@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lemo-recommender-grpc
+  namespace: lemo-dev
+  labels:
+    app: lemo-recommender
+    component: grpc
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lemo-recommender
+      component: grpc
+  template:
+    metadata:
+      labels:
+        app: lemo-recommender
+        component: grpc
+        version: v1
+    spec:
+      containers:
+      - name: grpc-server
+        image: lemo-recommender:latest
+        imagePullPolicy: Always
+        command: ["python3", "/app/scripts/run_grpc_server.py"]
+        ports:
+        - containerPort: 50051
+          name: grpc
+          protocol: TCP
+        env:
+        - name: GRPC_HOST
+          value: "0.0.0.0"
+        - name: GRPC_PORT
+          value: "50051"
+        - name: ENV
+          value: "prod"
+        - name: MONGODB_URL
+          valueFrom:
+            secretKeyRef:
+              name: lemo-secrets
+              key: mongodb-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: lemo-secrets
+              key: redis-url
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "python3 -c 'import grpc; channel = grpc.insecure_channel(\"localhost:50051\"); channel.close()'"
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "python3 -c 'import grpc; channel = grpc.insecure_channel(\"localhost:50051\"); channel.close()'"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+
