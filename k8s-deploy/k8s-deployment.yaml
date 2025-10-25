@@ -1,0 +1,281 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lemo-service-recommender-config
+  namespace: lemo-dev
+  labels:
+    app: lemo-service-recommender
+    environment: dev
+data:
+  config.env: |
+    # Application
+    ENV=prod
+    LOG_LEVEL=INFO
+    
+    # MongoDB
+    MONGODB_URL=mongodb://lemo-mongodb:27017
+    MONGODB_DB=lemo_recommender
+    
+    # Redis
+    REDIS_URL=redis://:redis_password_2024@lemo-redis:6379/0
+    
+    # Kafka
+    KAFKA_BOOTSTRAP_SERVERS=lemo-kafka:9092
+    
+    # Milvus
+    MILVUS_HOST=lemo-milvus
+    MILVUS_PORT=19530
+    
+    # Prometheus
+    PROMETHEUS_PORT=9090
+    
+    # API Server
+    HTTP_HOST=0.0.0.0
+    HTTP_PORT=8000
+    
+    # gRPC Server
+    GRPC_HOST=0.0.0.0
+    GRPC_PORT=50051
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lemo-service-recommender-http
+  namespace: lemo-dev
+  labels:
+    app: lemo-service-recommender
+    component: http
+    environment: dev
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: lemo-service-recommender
+      component: http
+      environment: dev
+  template:
+    metadata:
+      labels:
+        app: lemo-service-recommender
+        component: http
+        environment: dev
+    spec:
+      serviceAccountName: lemo-service-recommender-sa
+      imagePullSecrets:
+      - name: regcred
+      containers:
+      - name: recommender-http
+        image: ${IMAGE}
+        imagePullPolicy: IfNotPresent
+        command: ["python3", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        - containerPort: 9090
+          name: metrics
+          protocol: TCP
+        env:
+        - name: APP_ENV
+          value: "prod"
+        - name: K8S_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        envFrom:
+        - configMapRef:
+            name: lemo-service-recommender-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lemo-service-recommender-grpc
+  namespace: lemo-dev
+  labels:
+    app: lemo-service-recommender
+    component: grpc
+    environment: dev
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: lemo-service-recommender
+      component: grpc
+      environment: dev
+  template:
+    metadata:
+      labels:
+        app: lemo-service-recommender
+        component: grpc
+        environment: dev
+    spec:
+      serviceAccountName: lemo-service-recommender-sa
+      imagePullSecrets:
+      - name: regcred
+      containers:
+      - name: recommender-grpc
+        image: ${IMAGE}
+        imagePullPolicy: IfNotPresent
+        command: ["python3", "scripts/run_grpc_server.py"]
+        ports:
+        - containerPort: 50051
+          name: grpc
+          protocol: TCP
+        env:
+        - name: APP_ENV
+          value: "prod"
+        - name: K8S_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        envFrom:
+        - configMapRef:
+            name: lemo-service-recommender-config
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "python3 -c 'import grpc; channel = grpc.insecure_channel(\"localhost:50051\"); channel.close()'"
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "python3 -c 'import grpc; channel = grpc.insecure_channel(\"localhost:50051\"); channel.close()'"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lemo-service-recommender-http
+  namespace: lemo-dev
+  labels:
+    app: lemo-service-recommender
+    component: http
+    environment: dev
+spec:
+  type: NodePort
+  selector:
+    app: lemo-service-recommender
+    component: http
+    environment: dev
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+    nodePort: 30801
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    nodePort: 30802
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lemo-service-recommender
+  namespace: lemo-dev
+  labels:
+    app: lemo-service-recommender
+    component: grpc
+    environment: dev
+spec:
+  type: ClusterIP
+  selector:
+    app: lemo-service-recommender
+    component: grpc
+    environment: dev
+  ports:
+  - name: grpc
+    port: 50051
+    targetPort: 50051
+    protocol: TCP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: lemo-service-recommender-sa
+  namespace: lemo-dev
+  labels:
+    app: lemo-service-recommender
+    environment: dev
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lemo-service-recommender-role
+  namespace: lemo-dev
+  labels:
+    app: lemo-service-recommender
+    environment: dev
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lemo-service-recommender-rolebinding
+  namespace: lemo-dev
+  labels:
+    app: lemo-service-recommender
+    environment: dev
+subjects:
+- kind: ServiceAccount
+  name: lemo-service-recommender-sa
+  namespace: lemo-dev
+roleRef:
+  kind: Role
+  name: lemo-service-recommender-role
+  apiGroup: rbac.authorization.k8s.io
+
