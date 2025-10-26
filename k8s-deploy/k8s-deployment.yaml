@@ -7,35 +7,42 @@ metadata:
     app: lemo-service-recommender
     environment: dev
 data:
-  config.env: |
-    # Application
-    ENV=prod
-    LOG_LEVEL=INFO
-    
-    # MongoDB
-    MONGODB_URL=mongodb://lemo-mongodb:27017
-    MONGODB_DB=lemo_recommender
-    
-    # Redis
-    REDIS_URL=redis://:redis_password_2024@lemo-redis:6379/0
-    
-    # Kafka
-    KAFKA_BOOTSTRAP_SERVERS=lemo-kafka:9092
-    
-    # Milvus
-    MILVUS_HOST=lemo-milvus
-    MILVUS_PORT=19530
-    
-    # Prometheus
-    PROMETHEUS_PORT=9090
-    
-    # API Server
-    HTTP_HOST=0.0.0.0
-    HTTP_PORT=8000
-    
-    # gRPC Server
-    GRPC_HOST=0.0.0.0
-    GRPC_PORT=50051
+  # Application
+  ENV: "prod"
+  LOG_LEVEL: "INFO"
+  
+  # MongoDB (外网服务器)
+  MONGODB_URL: "mongodb://lemo_user:lemo_password_2024@111.228.39.41:27017/lemo_recommender"
+  MONGODB_DATABASE: "lemo_recommender"
+  
+  # Redis (外网服务器)
+  REDIS_URL: "redis://:redis_password_2024@111.228.39.41:6379/0"
+  
+  # Kafka (外网服务器)
+  KAFKA_BOOTSTRAP_SERVERS: "111.228.39.41:9092"
+  
+  # Milvus (外网服务器)
+  MILVUS_HOST: "111.228.39.41"
+  MILVUS_PORT: "19530"
+  
+  # MinIO (外网服务器 - 如果需要)
+  MINIO_ENDPOINT: "111.228.39.41:9000"
+  MINIO_ACCESS_KEY: "minioadmin"
+  MINIO_SECRET_KEY: "minioadmin"
+  
+  # Etcd (外网服务器 - 如果需要)
+  ETCD_ENDPOINTS: "111.228.39.41:2379"
+  
+  # Prometheus
+  PROMETHEUS_PORT: "9090"
+  
+  # API Server
+  HTTP_HOST: "0.0.0.0"
+  HTTP_PORT: "10071"
+  
+  # gRPC Server
+  GRPC_HOST: "0.0.0.0"
+  GRPC_PORT: "10072"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -47,7 +54,7 @@ metadata:
     component: http
     environment: dev
 spec:
-  replicas: 2
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -72,9 +79,9 @@ spec:
       - name: recommender-http
         image: ${IMAGE}
         imagePullPolicy: IfNotPresent
-        command: ["python3", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+        command: ["python3", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "10071"]
         ports:
-        - containerPort: 8000
+        - containerPort: 10071
           name: http
           protocol: TCP
         - containerPort: 9090
@@ -92,22 +99,22 @@ spec:
             name: lemo-service-recommender-config
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "200m"
+            memory: "128Mi"
+            cpu: "100m"
           limits:
-            memory: "1Gi"
-            cpu: "1000m"
+            memory: "512Mi"
+            cpu: "500m"
         livenessProbe:
           httpGet:
             path: /health
-            port: 8000
+            port: 10071
           initialDelaySeconds: 30
           periodSeconds: 30
           timeoutSeconds: 5
         readinessProbe:
           httpGet:
             path: /health
-            port: 8000
+            port: 10071
           initialDelaySeconds: 10
           periodSeconds: 10
           timeoutSeconds: 5
@@ -122,7 +129,7 @@ metadata:
     component: grpc
     environment: dev
 spec:
-  replicas: 2
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -149,7 +156,7 @@ spec:
         imagePullPolicy: IfNotPresent
         command: ["python3", "scripts/run_grpc_server.py"]
         ports:
-        - containerPort: 50051
+        - containerPort: 10072
           name: grpc
           protocol: TCP
         env:
@@ -164,11 +171,11 @@ spec:
             name: lemo-service-recommender-config
         resources:
           requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
             memory: "512Mi"
             cpu: "500m"
-          limits:
-            memory: "2Gi"
-            cpu: "2000m"
         livenessProbe:
           exec:
             command:
@@ -205,8 +212,8 @@ spec:
     environment: dev
   ports:
   - name: http
-    port: 8000
-    targetPort: 8000
+    port: 10071
+    targetPort: 10071
     nodePort: 30801
   - name: metrics
     port: 9090
@@ -230,8 +237,8 @@ spec:
     environment: dev
   ports:
   - name: grpc
-    port: 50051
-    targetPort: 50051
+    port: 10072
+    targetPort: 10072
     protocol: TCP
 ---
 apiVersion: v1

@@ -1,6 +1,13 @@
 # 多阶段构建
 FROM python:3.11-slim as builder
 
+# 安装编译工具和依赖
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
 # 设置工作目录
 WORKDIR /app
 
@@ -8,11 +15,11 @@ WORKDIR /app
 RUN pip install --no-cache-dir poetry==1.8.0
 
 # 复制依赖文件
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml ./
 
-# 配置Poetry并安装依赖
+# 配置Poetry并安装依赖（不需要lock文件）
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-dev --no-interaction --no-ansi
+    && poetry install --no-dev --no-interaction --no-ansi --no-root
 
 # 运行阶段
 FROM python:3.11-slim

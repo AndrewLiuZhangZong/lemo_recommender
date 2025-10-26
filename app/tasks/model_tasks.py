@@ -3,7 +3,6 @@
 """
 from typing import Dict, Any
 from datetime import datetime, timedelta
-import torch
 from app.tasks.celery_app import celery_app
 from app.core.database import get_database
 

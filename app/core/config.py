@@ -1,6 +1,6 @@
 """
 应用配置管理
-使用 pydantic-settings 管理配置，支持环境变量
+使用 pydantic-settings 管理配置，完全从环境变量加载
 """
 import os
 from typing import List, Optional
@@ -8,17 +8,10 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-# 根据ENV环境变量确定配置文件
-ENV = os.getenv("ENV", "local")
-env_file = f"config/{ENV}.env"
-
-
 class Settings(BaseSettings):
-    """应用配置"""
+    """应用配置 - 完全从环境变量加载"""
 
     model_config = SettingsConfigDict(
-        env_file=env_file,
-        env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
     )

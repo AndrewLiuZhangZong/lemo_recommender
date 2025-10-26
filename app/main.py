@@ -15,6 +15,11 @@ async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时
     print("🚀 启动推荐系统...")
+    print(f"📝 配置信息:")
+    print(f"   MongoDB URL: {settings.mongodb_url}")
+    print(f"   MongoDB DB: {settings.mongodb_database}")
+    print(f"   Redis URL: {settings.redis_url}")
+    print(f"   Kafka: {settings.kafka_bootstrap_servers}")
     await mongodb.connect()
     await redis_client.connect()
     yield
