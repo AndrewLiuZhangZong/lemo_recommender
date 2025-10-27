@@ -14,8 +14,8 @@ from .base_service import BaseServicer
 class ItemServicer(item_pb2_grpc.ItemServiceServicer, BaseServicer):
     """物品管理 gRPC 服务"""
     
-    def __init__(self):
-        self.item_service = ItemService()
+    def __init__(self, db):
+        self.item_service = ItemService(db)
     
     async def CreateItem(self, request, context) -> item_pb2.CreateItemResponse:
         """创建物品"""

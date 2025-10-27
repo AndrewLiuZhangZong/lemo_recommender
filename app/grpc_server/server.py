@@ -26,6 +26,9 @@ from .services import (
     ModelServicer,
 )
 
+# 导入数据库
+from app.core.database import mongodb
+
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,
@@ -36,6 +39,12 @@ logger = logging.getLogger(__name__)
 
 async def serve(host: str = "0.0.0.0", port: int = 50051):
     """启动 gRPC 服务器"""
+    
+    # 初始化数据库连接
+    logger.info("初始化数据库连接...")
+    await mongodb.connect()
+    db = mongodb.get_database()
+    logger.info("  ✓ 数据库连接成功")
     
     # 创建服务器
     server = grpc.aio.server(
@@ -50,27 +59,27 @@ async def serve(host: str = "0.0.0.0", port: int = 50051):
     logger.info("注册 gRPC 服务...")
     
     scenario_pb2_grpc.add_ScenarioServiceServicer_to_server(
-        ScenarioServicer(), server
+        ScenarioServicer(db), server
     )
     logger.info("  ✓ ScenarioService")
     
     item_pb2_grpc.add_ItemServiceServicer_to_server(
-        ItemServicer(), server
+        ItemServicer(db), server
     )
     logger.info("  ✓ ItemService")
     
     experiment_pb2_grpc.add_ExperimentServiceServicer_to_server(
-        ExperimentServicer(), server
+        ExperimentServicer(db), server
     )
     logger.info("  ✓ ExperimentService")
     
     analytics_pb2_grpc.add_AnalyticsServiceServicer_to_server(
-        AnalyticsServicer(), server
+        AnalyticsServicer(db), server
     )
     logger.info("  ✓ AnalyticsService")
     
     model_pb2_grpc.add_ModelServiceServicer_to_server(
-        ModelServicer(), server
+        ModelServicer(db), server
     )
     logger.info("  ✓ ModelService")
     
@@ -97,6 +106,7 @@ async def serve(host: str = "0.0.0.0", port: int = 50051):
     except KeyboardInterrupt:
         logger.info("\n⏹️  正在关闭 gRPC 服务器...")
         await server.stop(grace=5)
+        await mongodb.disconnect()
         logger.info("✅ gRPC 服务器已关闭")
 
 

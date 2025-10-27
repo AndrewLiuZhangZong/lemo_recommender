@@ -102,7 +102,7 @@ def get_database():
     from pymongo import MongoClient
     from app.core.config import settings
     client = MongoClient(settings.mongodb_url)
-    return client[settings.mongodb_db]
+    return client[settings.mongodb_database]
 
 
 async def get_redis() -> aioredis.Redis:

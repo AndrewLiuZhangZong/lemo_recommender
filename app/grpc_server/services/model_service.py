@@ -13,6 +13,9 @@ from .base_service import BaseServicer
 class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
     """模型管理 gRPC 服务（简化实现）"""
     
+    def __init__(self, db):
+        self.db = db
+    
     async def CreateModel(self, request, context):
         """创建模型"""
         try:

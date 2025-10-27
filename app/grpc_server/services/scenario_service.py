@@ -21,8 +21,8 @@ from app.services.scenario.service import ScenarioService
 class ScenarioServicer(scenario_pb2_grpc.ScenarioServiceServicer):
     """场景管理 gRPC 服务"""
     
-    def __init__(self):
-        self.scenario_service = ScenarioService()
+    def __init__(self, db):
+        self.scenario_service = ScenarioService(db)
     
     async def CreateScenario(
         self, 

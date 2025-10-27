@@ -44,7 +44,7 @@ tensorflow = {version = "^2.15.0", optional = true}
 # gRPC
 grpcio = "^1.68.0"
 grpcio-tools = "^1.68.0"
-protobuf = "^6.31.0"
+protobuf = "^5.29.0"
 
 # 监控与日志
 prometheus-client = "^0.19.0"

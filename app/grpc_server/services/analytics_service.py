@@ -13,6 +13,9 @@ from .base_service import BaseServicer
 class AnalyticsServicer(analytics_pb2_grpc.AnalyticsServiceServicer, BaseServicer):
     """数据分析 gRPC 服务（简化实现）"""
     
+    def __init__(self, db):
+        self.db = db
+    
     async def GetDashboard(self, request, context):
         """获取仪表板数据"""
         try:

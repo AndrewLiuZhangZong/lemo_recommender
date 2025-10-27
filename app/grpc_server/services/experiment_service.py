@@ -14,8 +14,8 @@ from .base_service import BaseServicer
 class ExperimentServicer(experiment_pb2_grpc.ExperimentServiceServicer, BaseServicer):
     """AB实验 gRPC 服务（简化实现）"""
     
-    def __init__(self):
-        self.experiment_service = ExperimentService()
+    def __init__(self, db):
+        self.experiment_service = ExperimentService(db)
     
     async def CreateExperiment(self, request, context):
         """创建实验"""
