@@ -1,5 +1,9 @@
 # 多阶段构建
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
+
+# 配置 apt 国内镜像源（清华源）
+RUN sed -i 's@http://deb.debian.org@https://mirrors.tuna.tsinghua.edu.cn@g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
+    sed -i 's@http://deb.debian.org@https://mirrors.tuna.tsinghua.edu.cn@g' /etc/apt/sources.list || true
 
 # 安装编译工具和依赖
 RUN apt-get update && apt-get install -y \
@@ -11,18 +15,24 @@ RUN apt-get update && apt-get install -y \
 # 设置工作目录
 WORKDIR /app
 
-# 安装Poetry
-RUN pip install --no-cache-dir poetry==1.8.0
+# 配置 pip 国内镜像源并安装 Poetry
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip install --no-cache-dir poetry==1.8.0
 
 # 复制依赖文件
 COPY pyproject.toml ./
 
-# 配置Poetry并安装依赖（不需要lock文件）
+# 配置 Poetry 使用国内源并安装依赖
 RUN poetry config virtualenvs.create false \
+    && poetry source add --priority=primary tsinghua https://pypi.tuna.tsinghua.edu.cn/simple/ \
     && poetry install --no-dev --no-interaction --no-ansi --no-root
 
 # 运行阶段
 FROM python:3.11-slim
+
+# 配置 apt 国内镜像源（清华源）
+RUN sed -i 's@http://deb.debian.org@https://mirrors.tuna.tsinghua.edu.cn@g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
+    sed -i 's@http://deb.debian.org@https://mirrors.tuna.tsinghua.edu.cn@g' /etc/apt/sources.list || true
 
 # 安装系统依赖
 RUN apt-get update && apt-get install -y \

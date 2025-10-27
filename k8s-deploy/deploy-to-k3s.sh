@@ -15,10 +15,10 @@ NAMESPACE="lemo-dev"
 
 IMAGE="$ACR_REGISTRY/$ACR_NAMESPACE/$ACR_IMAGE:$ACR_TAG"
 
-# 1. 构建镜像
+# 1. 构建镜像（跨平台构建 AMD64）
 
-echo "[1/5] 本地构建Docker镜像..."
-docker build -t $IMAGE .
+echo "[1/5] 本地构建 Docker 镜像（AMD64 平台）..."
+docker buildx build --platform linux/amd64 -t $IMAGE --load .
 
 echo "[2/5] 登录阿里云ACR..."
 docker login $ACR_REGISTRY -u "$ACR_USERNAME" -p "$ACR_PASSWORD"
