@@ -101,6 +101,11 @@ class ScenarioServicer(scenario_pb2_grpc.ScenarioServiceServicer):
     ) -> scenario_pb2.ListScenariosResponse:
         """查询场景列表"""
         try:
+            # 调试日志
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"ListScenarios 收到请求: tenant_id={request.tenant_id}, status={request.status}")
+            
             # 准备状态参数
             from app.models.scenario import ScenarioStatus
             status = None
@@ -125,6 +130,8 @@ class ScenarioServicer(scenario_pb2_grpc.ScenarioServiceServicer):
                 status=status,
                 pagination=pagination
             )
+            
+            logger.info(f"查询到 {len(scenarios)} 条场景, 总数: {total}")
             
             # 构建响应
             response = scenario_pb2.ListScenariosResponse()

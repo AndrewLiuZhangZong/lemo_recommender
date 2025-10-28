@@ -73,14 +73,22 @@ class ScenarioService:
         pagination: Optional[PaginationParams] = None
     ) -> tuple[List[Scenario], int]:
         """查询场景列表"""
+        import logging
+        logger = logging.getLogger(__name__)
         
         # 构建查询条件
-        query = {"tenant_id": tenant_id}
+        query = {}
+        # 如果 tenant_id 不为空，则添加租户过滤
+        if tenant_id and tenant_id.strip():
+            query["tenant_id"] = tenant_id
         if status:
             query["status"] = status
         
+        logger.info(f"查询场景列表: query={query}, pagination={pagination}")
+        
         # 总数
         total = await self.collection.count_documents(query)
+        logger.info(f"符合条件的总数: {total}")
         
         # 分页查询
         cursor = self.collection.find(query).sort("created_at", -1)
@@ -90,8 +98,10 @@ class ScenarioService:
         
         scenarios = []
         async for doc in cursor:
+            logger.debug(f"查询到文档: scenario_id={doc.get('scenario_id')}, tenant_id={doc.get('tenant_id')}")
             scenarios.append(Scenario(**doc))
         
+        logger.info(f"实际返回 {len(scenarios)} 条数据")
         return scenarios, total
     
     async def update_scenario(
