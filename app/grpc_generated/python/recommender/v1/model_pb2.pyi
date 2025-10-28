@@ -34,10 +34,9 @@ MODEL_STATUS_DEPLOYED: ModelStatus
 MODEL_STATUS_FAILED: ModelStatus
 
 class Model(_message.Message):
-    __slots__ = ("id", "tenant_id", "scenario_id", "model_id", "name", "model_type", "algorithm", "version", "status", "config", "metrics", "model_path", "created_at", "updated_at", "trained_at", "deployed_at")
+    __slots__ = ("id", "tenant_id", "model_id", "name", "model_type", "algorithm", "version", "status", "config", "metrics", "model_path", "created_at", "updated_at", "trained_at", "deployed_at")
     ID_FIELD_NUMBER: _ClassVar[int]
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
-    SCENARIO_ID_FIELD_NUMBER: _ClassVar[int]
     MODEL_ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     MODEL_TYPE_FIELD_NUMBER: _ClassVar[int]
@@ -53,7 +52,6 @@ class Model(_message.Message):
     DEPLOYED_AT_FIELD_NUMBER: _ClassVar[int]
     id: str
     tenant_id: str
-    scenario_id: str
     model_id: str
     name: str
     model_type: ModelType
@@ -67,12 +65,11 @@ class Model(_message.Message):
     updated_at: _timestamp_pb2.Timestamp
     trained_at: _timestamp_pb2.Timestamp
     deployed_at: _timestamp_pb2.Timestamp
-    def __init__(self, id: _Optional[str] = ..., tenant_id: _Optional[str] = ..., scenario_id: _Optional[str] = ..., model_id: _Optional[str] = ..., name: _Optional[str] = ..., model_type: _Optional[_Union[ModelType, str]] = ..., algorithm: _Optional[str] = ..., version: _Optional[str] = ..., status: _Optional[_Union[ModelStatus, str]] = ..., config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., metrics: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., model_path: _Optional[str] = ..., created_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., updated_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., trained_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., deployed_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+    def __init__(self, id: _Optional[str] = ..., tenant_id: _Optional[str] = ..., model_id: _Optional[str] = ..., name: _Optional[str] = ..., model_type: _Optional[_Union[ModelType, str]] = ..., algorithm: _Optional[str] = ..., version: _Optional[str] = ..., status: _Optional[_Union[ModelStatus, str]] = ..., config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., metrics: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., model_path: _Optional[str] = ..., created_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., updated_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., trained_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., deployed_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class CreateModelRequest(_message.Message):
-    __slots__ = ("tenant_id", "scenario_id", "model_id", "name", "model_type", "algorithm", "version", "config")
+    __slots__ = ("tenant_id", "model_id", "name", "model_type", "algorithm", "version", "config")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
-    SCENARIO_ID_FIELD_NUMBER: _ClassVar[int]
     MODEL_ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     MODEL_TYPE_FIELD_NUMBER: _ClassVar[int]
@@ -80,14 +77,13 @@ class CreateModelRequest(_message.Message):
     VERSION_FIELD_NUMBER: _ClassVar[int]
     CONFIG_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
-    scenario_id: str
     model_id: str
     name: str
     model_type: ModelType
     algorithm: str
     version: str
     config: _struct_pb2.Struct
-    def __init__(self, tenant_id: _Optional[str] = ..., scenario_id: _Optional[str] = ..., model_id: _Optional[str] = ..., name: _Optional[str] = ..., model_type: _Optional[_Union[ModelType, str]] = ..., algorithm: _Optional[str] = ..., version: _Optional[str] = ..., config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
+    def __init__(self, tenant_id: _Optional[str] = ..., model_id: _Optional[str] = ..., name: _Optional[str] = ..., model_type: _Optional[_Union[ModelType, str]] = ..., algorithm: _Optional[str] = ..., version: _Optional[str] = ..., config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
 
 class CreateModelResponse(_message.Message):
     __slots__ = ("model",)
@@ -96,14 +92,12 @@ class CreateModelResponse(_message.Message):
     def __init__(self, model: _Optional[_Union[Model, _Mapping]] = ...) -> None: ...
 
 class GetModelRequest(_message.Message):
-    __slots__ = ("tenant_id", "scenario_id", "model_id")
+    __slots__ = ("tenant_id", "model_id")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
-    SCENARIO_ID_FIELD_NUMBER: _ClassVar[int]
     MODEL_ID_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
-    scenario_id: str
     model_id: str
-    def __init__(self, tenant_id: _Optional[str] = ..., scenario_id: _Optional[str] = ..., model_id: _Optional[str] = ...) -> None: ...
+    def __init__(self, tenant_id: _Optional[str] = ..., model_id: _Optional[str] = ...) -> None: ...
 
 class GetModelResponse(_message.Message):
     __slots__ = ("model",)
@@ -112,18 +106,16 @@ class GetModelResponse(_message.Message):
     def __init__(self, model: _Optional[_Union[Model, _Mapping]] = ...) -> None: ...
 
 class ListModelsRequest(_message.Message):
-    __slots__ = ("tenant_id", "scenario_id", "model_type", "status", "page")
+    __slots__ = ("tenant_id", "model_type", "status", "page")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
-    SCENARIO_ID_FIELD_NUMBER: _ClassVar[int]
     MODEL_TYPE_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
     PAGE_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
-    scenario_id: str
     model_type: ModelType
     status: ModelStatus
     page: _pagination_pb2.PageRequest
-    def __init__(self, tenant_id: _Optional[str] = ..., scenario_id: _Optional[str] = ..., model_type: _Optional[_Union[ModelType, str]] = ..., status: _Optional[_Union[ModelStatus, str]] = ..., page: _Optional[_Union[_pagination_pb2.PageRequest, _Mapping]] = ...) -> None: ...
+    def __init__(self, tenant_id: _Optional[str] = ..., model_type: _Optional[_Union[ModelType, str]] = ..., status: _Optional[_Union[ModelStatus, str]] = ..., page: _Optional[_Union[_pagination_pb2.PageRequest, _Mapping]] = ...) -> None: ...
 
 class ListModelsResponse(_message.Message):
     __slots__ = ("models", "page_info")
@@ -134,20 +126,18 @@ class ListModelsResponse(_message.Message):
     def __init__(self, models: _Optional[_Iterable[_Union[Model, _Mapping]]] = ..., page_info: _Optional[_Union[_pagination_pb2.PageInfo, _Mapping]] = ...) -> None: ...
 
 class UpdateModelRequest(_message.Message):
-    __slots__ = ("tenant_id", "scenario_id", "model_id", "name", "config", "status")
+    __slots__ = ("tenant_id", "model_id", "name", "config", "status")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
-    SCENARIO_ID_FIELD_NUMBER: _ClassVar[int]
     MODEL_ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     CONFIG_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
-    scenario_id: str
     model_id: str
     name: str
     config: _struct_pb2.Struct
     status: ModelStatus
-    def __init__(self, tenant_id: _Optional[str] = ..., scenario_id: _Optional[str] = ..., model_id: _Optional[str] = ..., name: _Optional[str] = ..., config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., status: _Optional[_Union[ModelStatus, str]] = ...) -> None: ...
+    def __init__(self, tenant_id: _Optional[str] = ..., model_id: _Optional[str] = ..., name: _Optional[str] = ..., config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., status: _Optional[_Union[ModelStatus, str]] = ...) -> None: ...
 
 class UpdateModelResponse(_message.Message):
     __slots__ = ("model",)
@@ -156,14 +146,12 @@ class UpdateModelResponse(_message.Message):
     def __init__(self, model: _Optional[_Union[Model, _Mapping]] = ...) -> None: ...
 
 class DeleteModelRequest(_message.Message):
-    __slots__ = ("tenant_id", "scenario_id", "model_id")
+    __slots__ = ("tenant_id", "model_id")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
-    SCENARIO_ID_FIELD_NUMBER: _ClassVar[int]
     MODEL_ID_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
-    scenario_id: str
     model_id: str
-    def __init__(self, tenant_id: _Optional[str] = ..., scenario_id: _Optional[str] = ..., model_id: _Optional[str] = ...) -> None: ...
+    def __init__(self, tenant_id: _Optional[str] = ..., model_id: _Optional[str] = ...) -> None: ...
 
 class DeleteModelResponse(_message.Message):
     __slots__ = ("success",)
@@ -172,16 +160,14 @@ class DeleteModelResponse(_message.Message):
     def __init__(self, success: bool = ...) -> None: ...
 
 class TrainModelRequest(_message.Message):
-    __slots__ = ("tenant_id", "scenario_id", "model_id", "training_config")
+    __slots__ = ("tenant_id", "model_id", "training_config")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
-    SCENARIO_ID_FIELD_NUMBER: _ClassVar[int]
     MODEL_ID_FIELD_NUMBER: _ClassVar[int]
     TRAINING_CONFIG_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
-    scenario_id: str
     model_id: str
     training_config: _struct_pb2.Struct
-    def __init__(self, tenant_id: _Optional[str] = ..., scenario_id: _Optional[str] = ..., model_id: _Optional[str] = ..., training_config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
+    def __init__(self, tenant_id: _Optional[str] = ..., model_id: _Optional[str] = ..., training_config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
 
 class TrainModelResponse(_message.Message):
     __slots__ = ("job_id", "model")
@@ -192,16 +178,14 @@ class TrainModelResponse(_message.Message):
     def __init__(self, job_id: _Optional[str] = ..., model: _Optional[_Union[Model, _Mapping]] = ...) -> None: ...
 
 class GetTrainingStatusRequest(_message.Message):
-    __slots__ = ("tenant_id", "scenario_id", "model_id", "job_id")
+    __slots__ = ("tenant_id", "model_id", "job_id")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
-    SCENARIO_ID_FIELD_NUMBER: _ClassVar[int]
     MODEL_ID_FIELD_NUMBER: _ClassVar[int]
     JOB_ID_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
-    scenario_id: str
     model_id: str
     job_id: str
-    def __init__(self, tenant_id: _Optional[str] = ..., scenario_id: _Optional[str] = ..., model_id: _Optional[str] = ..., job_id: _Optional[str] = ...) -> None: ...
+    def __init__(self, tenant_id: _Optional[str] = ..., model_id: _Optional[str] = ..., job_id: _Optional[str] = ...) -> None: ...
 
 class TrainingStatus(_message.Message):
     __slots__ = ("job_id", "status", "progress", "metrics", "error_message", "started_at", "completed_at")
@@ -228,16 +212,14 @@ class GetTrainingStatusResponse(_message.Message):
     def __init__(self, status: _Optional[_Union[TrainingStatus, _Mapping]] = ...) -> None: ...
 
 class DeployModelRequest(_message.Message):
-    __slots__ = ("tenant_id", "scenario_id", "model_id", "version")
+    __slots__ = ("tenant_id", "model_id", "version")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
-    SCENARIO_ID_FIELD_NUMBER: _ClassVar[int]
     MODEL_ID_FIELD_NUMBER: _ClassVar[int]
     VERSION_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
-    scenario_id: str
     model_id: str
     version: str
-    def __init__(self, tenant_id: _Optional[str] = ..., scenario_id: _Optional[str] = ..., model_id: _Optional[str] = ..., version: _Optional[str] = ...) -> None: ...
+    def __init__(self, tenant_id: _Optional[str] = ..., model_id: _Optional[str] = ..., version: _Optional[str] = ...) -> None: ...
 
 class DeployModelResponse(_message.Message):
     __slots__ = ("model", "deployment_url")

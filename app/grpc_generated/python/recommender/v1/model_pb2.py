@@ -27,7 +27,7 @@ from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 from recommender_common.v1 import pagination_pb2 as recommender__common_dot_v1_dot_pagination__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1arecommender/v1/model.proto\x12\x13lemo.recommender.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&recommender_common/v1/pagination.proto\"\x8d\x04\n\x05Model\x12\n\n\x02id\x18\x01 \x01(\t\x12\x11\n\ttenant_id\x18\x02 \x01(\t\x12\x13\n\x0bscenario_id\x18\x03 \x01(\t\x12\x10\n\x08model_id\x18\x04 \x01(\t\x12\x0c\n\x04name\x18\x05 \x01(\t\x12\x32\n\nmodel_type\x18\x06 \x01(\x0e\x32\x1e.lemo.recommender.v1.ModelType\x12\x11\n\talgorithm\x18\x07 \x01(\t\x12\x0f\n\x07version\x18\x08 \x01(\t\x12\x30\n\x06status\x18\t \x01(\x0e\x32 .lemo.recommender.v1.ModelStatus\x12\'\n\x06\x63onfig\x18\n \x01(\x0b\x32\x17.google.protobuf.Struct\x12(\n\x07metrics\x18\x0b \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x12\n\nmodel_path\x18\x0c \x01(\t\x12.\n\ncreated_at\x18\r \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nupdated_at\x18\x0e \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\ntrained_at\x18\x0f \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12/\n\x0b\x64\x65ployed_at\x18\x10 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xdd\x01\n\x12\x43reateModelRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x10\n\x08model_id\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\x12\x32\n\nmodel_type\x18\x05 \x01(\x0e\x32\x1e.lemo.recommender.v1.ModelType\x12\x11\n\talgorithm\x18\x06 \x01(\t\x12\x0f\n\x07version\x18\x07 \x01(\t\x12\'\n\x06\x63onfig\x18\x08 \x01(\x0b\x32\x17.google.protobuf.Struct\"@\n\x13\x43reateModelResponse\x12)\n\x05model\x18\x01 \x01(\x0b\x32\x1a.lemo.recommender.v1.Model\"K\n\x0fGetModelRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x10\n\x08model_id\x18\x03 \x01(\t\"=\n\x10GetModelResponse\x12)\n\x05model\x18\x01 \x01(\x0b\x32\x1a.lemo.recommender.v1.Model\"\xd8\x01\n\x11ListModelsRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x32\n\nmodel_type\x18\x03 \x01(\x0e\x32\x1e.lemo.recommender.v1.ModelType\x12\x30\n\x06status\x18\x04 \x01(\x0e\x32 .lemo.recommender.v1.ModelStatus\x12\x35\n\x04page\x18\x05 \x01(\x0b\x32\'.lemo.recommender_common.v1.PageRequest\"y\n\x12ListModelsResponse\x12*\n\x06models\x18\x01 \x03(\x0b\x32\x1a.lemo.recommender.v1.Model\x12\x37\n\tpage_info\x18\x02 \x01(\x0b\x32$.lemo.recommender_common.v1.PageInfo\"\xb7\x01\n\x12UpdateModelRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x10\n\x08model_id\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\x12\'\n\x06\x63onfig\x18\x05 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x30\n\x06status\x18\x06 \x01(\x0e\x32 .lemo.recommender.v1.ModelStatus\"@\n\x13UpdateModelResponse\x12)\n\x05model\x18\x01 \x01(\x0b\x32\x1a.lemo.recommender.v1.Model\"N\n\x12\x44\x65leteModelRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x10\n\x08model_id\x18\x03 \x01(\t\"&\n\x13\x44\x65leteModelResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\"\x7f\n\x11TrainModelRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x10\n\x08model_id\x18\x03 \x01(\t\x12\x30\n\x0ftraining_config\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\"O\n\x12TrainModelResponse\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12)\n\x05model\x18\x02 \x01(\x0b\x32\x1a.lemo.recommender.v1.Model\"d\n\x18GetTrainingStatusRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x10\n\x08model_id\x18\x03 \x01(\t\x12\x0e\n\x06job_id\x18\x04 \x01(\t\"\xe5\x01\n\x0eTrainingStatus\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x10\n\x08progress\x18\x03 \x01(\x05\x12(\n\x07metrics\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x15\n\rerror_message\x18\x05 \x01(\t\x12.\n\nstarted_at\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x30\n\x0c\x63ompleted_at\x18\x07 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"P\n\x19GetTrainingStatusResponse\x12\x33\n\x06status\x18\x01 \x01(\x0b\x32#.lemo.recommender.v1.TrainingStatus\"_\n\x12\x44\x65ployModelRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x10\n\x08model_id\x18\x03 \x01(\t\x12\x0f\n\x07version\x18\x04 \x01(\t\"X\n\x13\x44\x65ployModelResponse\x12)\n\x05model\x18\x01 \x01(\x0b\x32\x1a.lemo.recommender.v1.Model\x12\x16\n\x0e\x64\x65ployment_url\x18\x02 \x01(\t*j\n\tModelType\x12\x1a\n\x16MODEL_TYPE_UNSPECIFIED\x10\x00\x12\x15\n\x11MODEL_TYPE_RECALL\x10\x01\x12\x13\n\x0fMODEL_TYPE_RANK\x10\x02\x12\x15\n\x11MODEL_TYPE_RERANK\x10\x03*\x94\x01\n\x0bModelStatus\x12\x1c\n\x18MODEL_STATUS_UNSPECIFIED\x10\x00\x12\x19\n\x15MODEL_STATUS_TRAINING\x10\x01\x12\x18\n\x14MODEL_STATUS_TRAINED\x10\x02\x12\x19\n\x15MODEL_STATUS_DEPLOYED\x10\x03\x12\x17\n\x13MODEL_STATUS_FAILED\x10\x04\x32\xa1\x06\n\x0cModelService\x12`\n\x0b\x43reateModel\x12\'.lemo.recommender.v1.CreateModelRequest\x1a(.lemo.recommender.v1.CreateModelResponse\x12W\n\x08GetModel\x12$.lemo.recommender.v1.GetModelRequest\x1a%.lemo.recommender.v1.GetModelResponse\x12]\n\nListModels\x12&.lemo.recommender.v1.ListModelsRequest\x1a\'.lemo.recommender.v1.ListModelsResponse\x12`\n\x0bUpdateModel\x12\'.lemo.recommender.v1.UpdateModelRequest\x1a(.lemo.recommender.v1.UpdateModelResponse\x12`\n\x0b\x44\x65leteModel\x12\'.lemo.recommender.v1.DeleteModelRequest\x1a(.lemo.recommender.v1.DeleteModelResponse\x12]\n\nTrainModel\x12&.lemo.recommender.v1.TrainModelRequest\x1a\'.lemo.recommender.v1.TrainModelResponse\x12r\n\x11GetTrainingStatus\x12-.lemo.recommender.v1.GetTrainingStatusRequest\x1a..lemo.recommender.v1.GetTrainingStatusResponse\x12`\n\x0b\x44\x65ployModel\x12\'.lemo.recommender.v1.DeployModelRequest\x1a(.lemo.recommender.v1.DeployModelResponseBQZOcodeup.aliyun.com/zls/lemo_go/andrew-protos/gen/go/recommender/v1;recommenderv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1arecommender/v1/model.proto\x12\x13lemo.recommender.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&recommender_common/v1/pagination.proto\"\xf8\x03\n\x05Model\x12\n\n\x02id\x18\x01 \x01(\t\x12\x11\n\ttenant_id\x18\x02 \x01(\t\x12\x10\n\x08model_id\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\x12\x32\n\nmodel_type\x18\x05 \x01(\x0e\x32\x1e.lemo.recommender.v1.ModelType\x12\x11\n\talgorithm\x18\x06 \x01(\t\x12\x0f\n\x07version\x18\x07 \x01(\t\x12\x30\n\x06status\x18\x08 \x01(\x0e\x32 .lemo.recommender.v1.ModelStatus\x12\'\n\x06\x63onfig\x18\t \x01(\x0b\x32\x17.google.protobuf.Struct\x12(\n\x07metrics\x18\n \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x12\n\nmodel_path\x18\x0b \x01(\t\x12.\n\ncreated_at\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nupdated_at\x18\r \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\ntrained_at\x18\x0e \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12/\n\x0b\x64\x65ployed_at\x18\x0f \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xc8\x01\n\x12\x43reateModelRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x10\n\x08model_id\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x32\n\nmodel_type\x18\x04 \x01(\x0e\x32\x1e.lemo.recommender.v1.ModelType\x12\x11\n\talgorithm\x18\x05 \x01(\t\x12\x0f\n\x07version\x18\x06 \x01(\t\x12\'\n\x06\x63onfig\x18\x07 \x01(\x0b\x32\x17.google.protobuf.Struct\"@\n\x13\x43reateModelResponse\x12)\n\x05model\x18\x01 \x01(\x0b\x32\x1a.lemo.recommender.v1.Model\"6\n\x0fGetModelRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x10\n\x08model_id\x18\x02 \x01(\t\"=\n\x10GetModelResponse\x12)\n\x05model\x18\x01 \x01(\x0b\x32\x1a.lemo.recommender.v1.Model\"\xc3\x01\n\x11ListModelsRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x32\n\nmodel_type\x18\x02 \x01(\x0e\x32\x1e.lemo.recommender.v1.ModelType\x12\x30\n\x06status\x18\x03 \x01(\x0e\x32 .lemo.recommender.v1.ModelStatus\x12\x35\n\x04page\x18\x04 \x01(\x0b\x32\'.lemo.recommender_common.v1.PageRequest\"y\n\x12ListModelsResponse\x12*\n\x06models\x18\x01 \x03(\x0b\x32\x1a.lemo.recommender.v1.Model\x12\x37\n\tpage_info\x18\x02 \x01(\x0b\x32$.lemo.recommender_common.v1.PageInfo\"\xa2\x01\n\x12UpdateModelRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x10\n\x08model_id\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\'\n\x06\x63onfig\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x30\n\x06status\x18\x05 \x01(\x0e\x32 .lemo.recommender.v1.ModelStatus\"@\n\x13UpdateModelResponse\x12)\n\x05model\x18\x01 \x01(\x0b\x32\x1a.lemo.recommender.v1.Model\"9\n\x12\x44\x65leteModelRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x10\n\x08model_id\x18\x02 \x01(\t\"&\n\x13\x44\x65leteModelResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\"j\n\x11TrainModelRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x10\n\x08model_id\x18\x02 \x01(\t\x12\x30\n\x0ftraining_config\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\"O\n\x12TrainModelResponse\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12)\n\x05model\x18\x02 \x01(\x0b\x32\x1a.lemo.recommender.v1.Model\"O\n\x18GetTrainingStatusRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x10\n\x08model_id\x18\x02 \x01(\t\x12\x0e\n\x06job_id\x18\x03 \x01(\t\"\xe5\x01\n\x0eTrainingStatus\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x10\n\x08progress\x18\x03 \x01(\x05\x12(\n\x07metrics\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x15\n\rerror_message\x18\x05 \x01(\t\x12.\n\nstarted_at\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x30\n\x0c\x63ompleted_at\x18\x07 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"P\n\x19GetTrainingStatusResponse\x12\x33\n\x06status\x18\x01 \x01(\x0b\x32#.lemo.recommender.v1.TrainingStatus\"J\n\x12\x44\x65ployModelRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x10\n\x08model_id\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\t\"X\n\x13\x44\x65ployModelResponse\x12)\n\x05model\x18\x01 \x01(\x0b\x32\x1a.lemo.recommender.v1.Model\x12\x16\n\x0e\x64\x65ployment_url\x18\x02 \x01(\t*j\n\tModelType\x12\x1a\n\x16MODEL_TYPE_UNSPECIFIED\x10\x00\x12\x15\n\x11MODEL_TYPE_RECALL\x10\x01\x12\x13\n\x0fMODEL_TYPE_RANK\x10\x02\x12\x15\n\x11MODEL_TYPE_RERANK\x10\x03*\x94\x01\n\x0bModelStatus\x12\x1c\n\x18MODEL_STATUS_UNSPECIFIED\x10\x00\x12\x19\n\x15MODEL_STATUS_TRAINING\x10\x01\x12\x18\n\x14MODEL_STATUS_TRAINED\x10\x02\x12\x19\n\x15MODEL_STATUS_DEPLOYED\x10\x03\x12\x17\n\x13MODEL_STATUS_FAILED\x10\x04\x32\xa1\x06\n\x0cModelService\x12`\n\x0b\x43reateModel\x12\'.lemo.recommender.v1.CreateModelRequest\x1a(.lemo.recommender.v1.CreateModelResponse\x12W\n\x08GetModel\x12$.lemo.recommender.v1.GetModelRequest\x1a%.lemo.recommender.v1.GetModelResponse\x12]\n\nListModels\x12&.lemo.recommender.v1.ListModelsRequest\x1a\'.lemo.recommender.v1.ListModelsResponse\x12`\n\x0bUpdateModel\x12\'.lemo.recommender.v1.UpdateModelRequest\x1a(.lemo.recommender.v1.UpdateModelResponse\x12`\n\x0b\x44\x65leteModel\x12\'.lemo.recommender.v1.DeleteModelRequest\x1a(.lemo.recommender.v1.DeleteModelResponse\x12]\n\nTrainModel\x12&.lemo.recommender.v1.TrainModelRequest\x1a\'.lemo.recommender.v1.TrainModelResponse\x12r\n\x11GetTrainingStatus\x12-.lemo.recommender.v1.GetTrainingStatusRequest\x1a..lemo.recommender.v1.GetTrainingStatusResponse\x12`\n\x0b\x44\x65ployModel\x12\'.lemo.recommender.v1.DeployModelRequest\x1a(.lemo.recommender.v1.DeployModelResponseBQZOcodeup.aliyun.com/zls/lemo_go/andrew-protos/gen/go/recommender/v1;recommenderv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,46 +35,46 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'recommender.v1.model_pb2', 
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZOcodeup.aliyun.com/zls/lemo_go/andrew-protos/gen/go/recommender/v1;recommenderv1'
-  _globals['_MODELTYPE']._serialized_start=2639
-  _globals['_MODELTYPE']._serialized_end=2745
-  _globals['_MODELSTATUS']._serialized_start=2748
-  _globals['_MODELSTATUS']._serialized_end=2896
+  _globals['_MODELTYPE']._serialized_start=2450
+  _globals['_MODELTYPE']._serialized_end=2556
+  _globals['_MODELSTATUS']._serialized_start=2559
+  _globals['_MODELSTATUS']._serialized_end=2707
   _globals['_MODEL']._serialized_start=155
-  _globals['_MODEL']._serialized_end=680
-  _globals['_CREATEMODELREQUEST']._serialized_start=683
-  _globals['_CREATEMODELREQUEST']._serialized_end=904
-  _globals['_CREATEMODELRESPONSE']._serialized_start=906
-  _globals['_CREATEMODELRESPONSE']._serialized_end=970
-  _globals['_GETMODELREQUEST']._serialized_start=972
-  _globals['_GETMODELREQUEST']._serialized_end=1047
-  _globals['_GETMODELRESPONSE']._serialized_start=1049
-  _globals['_GETMODELRESPONSE']._serialized_end=1110
-  _globals['_LISTMODELSREQUEST']._serialized_start=1113
-  _globals['_LISTMODELSREQUEST']._serialized_end=1329
-  _globals['_LISTMODELSRESPONSE']._serialized_start=1331
-  _globals['_LISTMODELSRESPONSE']._serialized_end=1452
-  _globals['_UPDATEMODELREQUEST']._serialized_start=1455
-  _globals['_UPDATEMODELREQUEST']._serialized_end=1638
-  _globals['_UPDATEMODELRESPONSE']._serialized_start=1640
-  _globals['_UPDATEMODELRESPONSE']._serialized_end=1704
-  _globals['_DELETEMODELREQUEST']._serialized_start=1706
-  _globals['_DELETEMODELREQUEST']._serialized_end=1784
-  _globals['_DELETEMODELRESPONSE']._serialized_start=1786
-  _globals['_DELETEMODELRESPONSE']._serialized_end=1824
-  _globals['_TRAINMODELREQUEST']._serialized_start=1826
-  _globals['_TRAINMODELREQUEST']._serialized_end=1953
-  _globals['_TRAINMODELRESPONSE']._serialized_start=1955
-  _globals['_TRAINMODELRESPONSE']._serialized_end=2034
-  _globals['_GETTRAININGSTATUSREQUEST']._serialized_start=2036
-  _globals['_GETTRAININGSTATUSREQUEST']._serialized_end=2136
-  _globals['_TRAININGSTATUS']._serialized_start=2139
-  _globals['_TRAININGSTATUS']._serialized_end=2368
-  _globals['_GETTRAININGSTATUSRESPONSE']._serialized_start=2370
-  _globals['_GETTRAININGSTATUSRESPONSE']._serialized_end=2450
-  _globals['_DEPLOYMODELREQUEST']._serialized_start=2452
-  _globals['_DEPLOYMODELREQUEST']._serialized_end=2547
-  _globals['_DEPLOYMODELRESPONSE']._serialized_start=2549
-  _globals['_DEPLOYMODELRESPONSE']._serialized_end=2637
-  _globals['_MODELSERVICE']._serialized_start=2899
-  _globals['_MODELSERVICE']._serialized_end=3700
+  _globals['_MODEL']._serialized_end=659
+  _globals['_CREATEMODELREQUEST']._serialized_start=662
+  _globals['_CREATEMODELREQUEST']._serialized_end=862
+  _globals['_CREATEMODELRESPONSE']._serialized_start=864
+  _globals['_CREATEMODELRESPONSE']._serialized_end=928
+  _globals['_GETMODELREQUEST']._serialized_start=930
+  _globals['_GETMODELREQUEST']._serialized_end=984
+  _globals['_GETMODELRESPONSE']._serialized_start=986
+  _globals['_GETMODELRESPONSE']._serialized_end=1047
+  _globals['_LISTMODELSREQUEST']._serialized_start=1050
+  _globals['_LISTMODELSREQUEST']._serialized_end=1245
+  _globals['_LISTMODELSRESPONSE']._serialized_start=1247
+  _globals['_LISTMODELSRESPONSE']._serialized_end=1368
+  _globals['_UPDATEMODELREQUEST']._serialized_start=1371
+  _globals['_UPDATEMODELREQUEST']._serialized_end=1533
+  _globals['_UPDATEMODELRESPONSE']._serialized_start=1535
+  _globals['_UPDATEMODELRESPONSE']._serialized_end=1599
+  _globals['_DELETEMODELREQUEST']._serialized_start=1601
+  _globals['_DELETEMODELREQUEST']._serialized_end=1658
+  _globals['_DELETEMODELRESPONSE']._serialized_start=1660
+  _globals['_DELETEMODELRESPONSE']._serialized_end=1698
+  _globals['_TRAINMODELREQUEST']._serialized_start=1700
+  _globals['_TRAINMODELREQUEST']._serialized_end=1806
+  _globals['_TRAINMODELRESPONSE']._serialized_start=1808
+  _globals['_TRAINMODELRESPONSE']._serialized_end=1887
+  _globals['_GETTRAININGSTATUSREQUEST']._serialized_start=1889
+  _globals['_GETTRAININGSTATUSREQUEST']._serialized_end=1968
+  _globals['_TRAININGSTATUS']._serialized_start=1971
+  _globals['_TRAININGSTATUS']._serialized_end=2200
+  _globals['_GETTRAININGSTATUSRESPONSE']._serialized_start=2202
+  _globals['_GETTRAININGSTATUSRESPONSE']._serialized_end=2282
+  _globals['_DEPLOYMODELREQUEST']._serialized_start=2284
+  _globals['_DEPLOYMODELREQUEST']._serialized_end=2358
+  _globals['_DEPLOYMODELRESPONSE']._serialized_start=2360
+  _globals['_DEPLOYMODELRESPONSE']._serialized_end=2448
+  _globals['_MODELSERVICE']._serialized_start=2710
+  _globals['_MODELSERVICE']._serialized_end=3511
 # @@protoc_insertion_point(module_scope)
