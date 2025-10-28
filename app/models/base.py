@@ -2,8 +2,9 @@
 基础数据模型
 """
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, Field
+from typing import Any, Optional
+from pydantic import BaseModel, Field, GetCoreSchemaHandler
+from pydantic_core import core_schema
 from bson import ObjectId
 
 
@@ -11,14 +12,26 @@ class PyObjectId(ObjectId):
     """用于Pydantic的ObjectId类型"""
     
     @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        """Pydantic v2 验证器"""
+        return core_schema.union_schema([
+            core_schema.is_instance_schema(ObjectId),
+            core_schema.chain_schema([
+                core_schema.str_schema(),
+                core_schema.no_info_plain_validator_function(cls.validate),
+            ])
+        ])
     
     @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError("Invalid ObjectId")
-        return ObjectId(v)
+    def validate(cls, v: Any) -> ObjectId:
+        """验证并转换为ObjectId"""
+        if isinstance(v, ObjectId):
+            return v
+        if isinstance(v, str) and ObjectId.is_valid(v):
+            return ObjectId(v)
+        raise ValueError(f"Invalid ObjectId: {v}")
     
     @classmethod
     def __get_pydantic_json_schema__(cls, field_schema):
