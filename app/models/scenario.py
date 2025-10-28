@@ -10,11 +10,14 @@ from app.models.base import MongoBaseModel
 
 class ScenarioType(str, Enum):
     """场景类型"""
-    VLOG = "vlog"
-    NEWS = "news"
-    ECOMMERCE = "ecommerce"
-    MUSIC = "music"
-    CUSTOM = "custom"
+    ECOMMERCE = "ecommerce"       # 电商推荐
+    CONTENT = "content"           # 内容推荐
+    SOCIAL = "social"             # 社交推荐
+    PERSONALIZED = "personalized" # 个性化推荐
+    VLOG = "vlog"                 # 短视频推荐
+    NEWS = "news"                 # 新闻推荐
+    MUSIC = "music"               # 音乐推荐
+    CUSTOM = "custom"             # 自定义
 
 
 class ScenarioStatus(str, Enum):
