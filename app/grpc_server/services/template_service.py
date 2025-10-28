@@ -9,7 +9,7 @@ from recommender.v1 import template_pb2, template_pb2_grpc
 from recommender_common.v1 import pagination_pb2
 from app.services.template.service import TemplateService
 from app.models.template import TemplateCreate, TemplateUpdate
-from app.models.common import PaginationParams
+from app.models.base import PaginationParams
 
 logger = logging.getLogger(__name__)
 

@@ -7,7 +7,7 @@ from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorCollection
 
 from app.models.template import Template, TemplateCreate, TemplateUpdate
-from app.models.common import PaginationParams
+from app.models.base import PaginationParams
 
 logger = logging.getLogger(__name__)
 
