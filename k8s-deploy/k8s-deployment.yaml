@@ -146,6 +146,12 @@ spec:
         app: lemo-service-recommender
         component: grpc
         environment: dev
+        kratos-service-app: lemo-service-recommender
+        kratos-service-id: recommender-001
+        kratos-service-version: "1.0.0"
+      annotations:
+        kratos-service-metadata: '{"env":"dev"}'
+        kratos-service-protocols: '{"10072":"grpc"}'
     spec:
       serviceAccountName: lemo-service-recommender-sa
       imagePullSecrets:
@@ -181,7 +187,7 @@ spec:
             command:
             - /bin/sh
             - -c
-            - "python3 -c 'import grpc; channel = grpc.insecure_channel(\"localhost:50051\"); channel.close()'"
+            - "python3 -c 'import grpc; channel = grpc.insecure_channel(\"localhost:10072\"); channel.close()'"
           initialDelaySeconds: 30
           periodSeconds: 30
           timeoutSeconds: 5
@@ -190,7 +196,7 @@ spec:
             command:
             - /bin/sh
             - -c
-            - "python3 -c 'import grpc; channel = grpc.insecure_channel(\"localhost:50051\"); channel.close()'"
+            - "python3 -c 'import grpc; channel = grpc.insecure_channel(\"localhost:10072\"); channel.close()'"
           initialDelaySeconds: 10
           periodSeconds: 10
           timeoutSeconds: 5
