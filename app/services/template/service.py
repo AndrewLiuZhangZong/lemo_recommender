@@ -2,7 +2,7 @@
 配置模板管理服务
 """
 import logging
-from typing import List, Optional, tuple
+from typing import List, Optional
 from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorCollection
 
