@@ -106,10 +106,10 @@ class Scenario(MongoBaseModel):
     
     tenant_id: str = Field(..., description="租户ID")
     scenario_id: str = Field(..., description="场景ID（租户内唯一）")
-    scenario_type: ScenarioType = Field(..., description="场景类型")
+    scenario_type: ScenarioType = Field(default=ScenarioType.CUSTOM, description="场景类型")
     name: str = Field(..., description="场景名称")
     description: Optional[str] = Field(None, description="场景描述")
-    config: ScenarioConfig = Field(..., description="场景配置")
+    config: ScenarioConfig = Field(default_factory=ScenarioConfig, description="场景配置")
     status: ScenarioStatus = Field(default=ScenarioStatus.ACTIVE, description="场景状态")
     
     class Config:
