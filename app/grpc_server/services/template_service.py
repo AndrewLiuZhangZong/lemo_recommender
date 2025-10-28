@@ -4,6 +4,7 @@
 import logging
 import grpc
 from google.protobuf import struct_pb2, timestamp_pb2
+from google.protobuf.json_format import MessageToDict
 
 from recommender.v1 import template_pb2, template_pb2_grpc
 from recommender_common.v1 import pagination_pb2
@@ -22,12 +23,10 @@ class TemplateServicer(template_pb2_grpc.TemplateServiceServicer):
     
     def _struct_to_dict(self, struct_data: struct_pb2.Struct) -> dict:
         """将 protobuf Struct 转换为 Python dict"""
-        import json
-        return json.loads(struct_pb2.Struct.to_json(struct_data))
+        return MessageToDict(struct_data)
     
     def _dict_to_struct(self, data: dict) -> struct_pb2.Struct:
         """将 Python dict 转换为 protobuf Struct"""
-        import json
         struct = struct_pb2.Struct()
         struct.update(data)
         return struct
