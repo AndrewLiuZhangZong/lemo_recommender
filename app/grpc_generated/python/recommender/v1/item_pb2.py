@@ -24,10 +24,10 @@ _sym_db = _symbol_database.Default()
 
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
-from common.v1 import pagination_pb2 as common_dot_v1_dot_pagination__pb2
+from recommender_common.v1 import pagination_pb2 as recommender__common_dot_v1_dot_pagination__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19recommender/v1/item.proto\x12\x13lemo.recommender.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1a\x63ommon/v1/pagination.proto\"\xf9\x01\n\x04Item\x12\n\n\x02id\x18\x01 \x01(\t\x12\x11\n\ttenant_id\x18\x02 \x01(\t\x12\x13\n\x0bscenario_id\x18\x03 \x01(\t\x12\x0f\n\x07item_id\x18\x04 \x01(\t\x12)\n\x08metadata\x18\x05 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x11\n\tembedding\x18\x06 \x03(\x02\x12\x0e\n\x06status\x18\x07 \x01(\t\x12.\n\ncreated_at\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nupdated_at\x18\t \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\x8a\x01\n\x11\x43reateItemRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x0f\n\x07item_id\x18\x03 \x01(\t\x12)\n\x08metadata\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x11\n\tembedding\x18\x05 \x03(\x02\"=\n\x12\x43reateItemResponse\x12\'\n\x04item\x18\x01 \x01(\x0b\x32\x19.lemo.recommender.v1.Item\"\xe4\x01\n\x17\x42\x61tchCreateItemsRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x45\n\x05items\x18\x03 \x03(\x0b\x32\x36.lemo.recommender.v1.BatchCreateItemsRequest.ItemInput\x1aZ\n\tItemInput\x12\x0f\n\x07item_id\x18\x01 \x01(\t\x12)\n\x08metadata\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x11\n\tembedding\x18\x03 \x03(\x02\"\x81\x01\n\x18\x42\x61tchCreateItemsResponse\x12(\n\x05items\x18\x01 \x03(\x0b\x32\x19.lemo.recommender.v1.Item\x12\x15\n\rsuccess_count\x18\x02 \x01(\x05\x12\x14\n\x0c\x66\x61iled_count\x18\x03 \x01(\x05\x12\x0e\n\x06\x65rrors\x18\x04 \x03(\t\"I\n\x0eGetItemRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x0f\n\x07item_id\x18\x03 \x01(\t\":\n\x0fGetItemResponse\x12\'\n\x04item\x18\x01 \x01(\x0b\x32\x19.lemo.recommender.v1.Item\"u\n\x10ListItemsRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x0e\n\x06status\x18\x03 \x01(\t\x12)\n\x04page\x18\x04 \x01(\x0b\x32\x1b.lemo.common.v1.PageRequest\"j\n\x11ListItemsResponse\x12(\n\x05items\x18\x01 \x03(\x0b\x32\x19.lemo.recommender.v1.Item\x12+\n\tpage_info\x18\x02 \x01(\x0b\x32\x18.lemo.common.v1.PageInfo\"\x9a\x01\n\x11UpdateItemRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x0f\n\x07item_id\x18\x03 \x01(\t\x12)\n\x08metadata\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x11\n\tembedding\x18\x05 \x03(\x02\x12\x0e\n\x06status\x18\x06 \x01(\t\"=\n\x12UpdateItemResponse\x12\'\n\x04item\x18\x01 \x01(\x0b\x32\x19.lemo.recommender.v1.Item\"L\n\x11\x44\x65leteItemRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x0f\n\x07item_id\x18\x03 \x01(\t\"%\n\x12\x44\x65leteItemResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\"S\n\x17\x42\x61tchDeleteItemsRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x10\n\x08item_ids\x18\x03 \x03(\t\"W\n\x18\x42\x61tchDeleteItemsResponse\x12\x15\n\rsuccess_count\x18\x01 \x01(\x05\x12\x14\n\x0c\x66\x61iled_count\x18\x02 \x01(\x05\x12\x0e\n\x06\x65rrors\x18\x03 \x03(\t\"\xa0\x01\n\x12SearchItemsRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\r\n\x05query\x18\x03 \x01(\t\x12(\n\x07\x66ilters\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12)\n\x04page\x18\x05 \x01(\x0b\x32\x1b.lemo.common.v1.PageRequest\"l\n\x13SearchItemsResponse\x12(\n\x05items\x18\x01 \x03(\x0b\x32\x19.lemo.recommender.v1.Item\x12+\n\tpage_info\x18\x02 \x01(\x0b\x32\x18.lemo.common.v1.PageInfo2\xa0\x06\n\x0bItemService\x12]\n\nCreateItem\x12&.lemo.recommender.v1.CreateItemRequest\x1a\'.lemo.recommender.v1.CreateItemResponse\x12o\n\x10\x42\x61tchCreateItems\x12,.lemo.recommender.v1.BatchCreateItemsRequest\x1a-.lemo.recommender.v1.BatchCreateItemsResponse\x12T\n\x07GetItem\x12#.lemo.recommender.v1.GetItemRequest\x1a$.lemo.recommender.v1.GetItemResponse\x12Z\n\tListItems\x12%.lemo.recommender.v1.ListItemsRequest\x1a&.lemo.recommender.v1.ListItemsResponse\x12]\n\nUpdateItem\x12&.lemo.recommender.v1.UpdateItemRequest\x1a\'.lemo.recommender.v1.UpdateItemResponse\x12]\n\nDeleteItem\x12&.lemo.recommender.v1.DeleteItemRequest\x1a\'.lemo.recommender.v1.DeleteItemResponse\x12o\n\x10\x42\x61tchDeleteItems\x12,.lemo.recommender.v1.BatchDeleteItemsRequest\x1a-.lemo.recommender.v1.BatchDeleteItemsResponse\x12`\n\x0bSearchItems\x12\'.lemo.recommender.v1.SearchItemsRequest\x1a(.lemo.recommender.v1.SearchItemsResponseBQZOcodeup.aliyun.com/zls/lemo_go/andrew-protos/gen/go/recommender/v1;recommenderv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19recommender/v1/item.proto\x12\x13lemo.recommender.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&recommender_common/v1/pagination.proto\"\xf9\x01\n\x04Item\x12\n\n\x02id\x18\x01 \x01(\t\x12\x11\n\ttenant_id\x18\x02 \x01(\t\x12\x13\n\x0bscenario_id\x18\x03 \x01(\t\x12\x0f\n\x07item_id\x18\x04 \x01(\t\x12)\n\x08metadata\x18\x05 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x11\n\tembedding\x18\x06 \x03(\x02\x12\x0e\n\x06status\x18\x07 \x01(\t\x12.\n\ncreated_at\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nupdated_at\x18\t \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\x8a\x01\n\x11\x43reateItemRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x0f\n\x07item_id\x18\x03 \x01(\t\x12)\n\x08metadata\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x11\n\tembedding\x18\x05 \x03(\x02\"=\n\x12\x43reateItemResponse\x12\'\n\x04item\x18\x01 \x01(\x0b\x32\x19.lemo.recommender.v1.Item\"\xe4\x01\n\x17\x42\x61tchCreateItemsRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x45\n\x05items\x18\x03 \x03(\x0b\x32\x36.lemo.recommender.v1.BatchCreateItemsRequest.ItemInput\x1aZ\n\tItemInput\x12\x0f\n\x07item_id\x18\x01 \x01(\t\x12)\n\x08metadata\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x11\n\tembedding\x18\x03 \x03(\x02\"\x81\x01\n\x18\x42\x61tchCreateItemsResponse\x12(\n\x05items\x18\x01 \x03(\x0b\x32\x19.lemo.recommender.v1.Item\x12\x15\n\rsuccess_count\x18\x02 \x01(\x05\x12\x14\n\x0c\x66\x61iled_count\x18\x03 \x01(\x05\x12\x0e\n\x06\x65rrors\x18\x04 \x03(\t\"I\n\x0eGetItemRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x0f\n\x07item_id\x18\x03 \x01(\t\":\n\x0fGetItemResponse\x12\'\n\x04item\x18\x01 \x01(\x0b\x32\x19.lemo.recommender.v1.Item\"\x81\x01\n\x10ListItemsRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x0e\n\x06status\x18\x03 \x01(\t\x12\x35\n\x04page\x18\x04 \x01(\x0b\x32\'.lemo.recommender_common.v1.PageRequest\"v\n\x11ListItemsResponse\x12(\n\x05items\x18\x01 \x03(\x0b\x32\x19.lemo.recommender.v1.Item\x12\x37\n\tpage_info\x18\x02 \x01(\x0b\x32$.lemo.recommender_common.v1.PageInfo\"\x9a\x01\n\x11UpdateItemRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x0f\n\x07item_id\x18\x03 \x01(\t\x12)\n\x08metadata\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x11\n\tembedding\x18\x05 \x03(\x02\x12\x0e\n\x06status\x18\x06 \x01(\t\"=\n\x12UpdateItemResponse\x12\'\n\x04item\x18\x01 \x01(\x0b\x32\x19.lemo.recommender.v1.Item\"L\n\x11\x44\x65leteItemRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x0f\n\x07item_id\x18\x03 \x01(\t\"%\n\x12\x44\x65leteItemResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\"S\n\x17\x42\x61tchDeleteItemsRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\x10\n\x08item_ids\x18\x03 \x03(\t\"W\n\x18\x42\x61tchDeleteItemsResponse\x12\x15\n\rsuccess_count\x18\x01 \x01(\x05\x12\x14\n\x0c\x66\x61iled_count\x18\x02 \x01(\x05\x12\x0e\n\x06\x65rrors\x18\x03 \x03(\t\"\xac\x01\n\x12SearchItemsRequest\x12\x11\n\ttenant_id\x18\x01 \x01(\t\x12\x13\n\x0bscenario_id\x18\x02 \x01(\t\x12\r\n\x05query\x18\x03 \x01(\t\x12(\n\x07\x66ilters\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x35\n\x04page\x18\x05 \x01(\x0b\x32\'.lemo.recommender_common.v1.PageRequest\"x\n\x13SearchItemsResponse\x12(\n\x05items\x18\x01 \x03(\x0b\x32\x19.lemo.recommender.v1.Item\x12\x37\n\tpage_info\x18\x02 \x01(\x0b\x32$.lemo.recommender_common.v1.PageInfo2\xa0\x06\n\x0bItemService\x12]\n\nCreateItem\x12&.lemo.recommender.v1.CreateItemRequest\x1a\'.lemo.recommender.v1.CreateItemResponse\x12o\n\x10\x42\x61tchCreateItems\x12,.lemo.recommender.v1.BatchCreateItemsRequest\x1a-.lemo.recommender.v1.BatchCreateItemsResponse\x12T\n\x07GetItem\x12#.lemo.recommender.v1.GetItemRequest\x1a$.lemo.recommender.v1.GetItemResponse\x12Z\n\tListItems\x12%.lemo.recommender.v1.ListItemsRequest\x1a&.lemo.recommender.v1.ListItemsResponse\x12]\n\nUpdateItem\x12&.lemo.recommender.v1.UpdateItemRequest\x1a\'.lemo.recommender.v1.UpdateItemResponse\x12]\n\nDeleteItem\x12&.lemo.recommender.v1.DeleteItemRequest\x1a\'.lemo.recommender.v1.DeleteItemResponse\x12o\n\x10\x42\x61tchDeleteItems\x12,.lemo.recommender.v1.BatchDeleteItemsRequest\x1a-.lemo.recommender.v1.BatchDeleteItemsResponse\x12`\n\x0bSearchItems\x12\'.lemo.recommender.v1.SearchItemsRequest\x1a(.lemo.recommender.v1.SearchItemsResponseBQZOcodeup.aliyun.com/zls/lemo_go/andrew-protos/gen/go/recommender/v1;recommenderv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,42 +35,42 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'recommender.v1.item_pb2', _
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZOcodeup.aliyun.com/zls/lemo_go/andrew-protos/gen/go/recommender/v1;recommenderv1'
-  _globals['_ITEM']._serialized_start=142
-  _globals['_ITEM']._serialized_end=391
-  _globals['_CREATEITEMREQUEST']._serialized_start=394
-  _globals['_CREATEITEMREQUEST']._serialized_end=532
-  _globals['_CREATEITEMRESPONSE']._serialized_start=534
-  _globals['_CREATEITEMRESPONSE']._serialized_end=595
-  _globals['_BATCHCREATEITEMSREQUEST']._serialized_start=598
-  _globals['_BATCHCREATEITEMSREQUEST']._serialized_end=826
-  _globals['_BATCHCREATEITEMSREQUEST_ITEMINPUT']._serialized_start=736
-  _globals['_BATCHCREATEITEMSREQUEST_ITEMINPUT']._serialized_end=826
-  _globals['_BATCHCREATEITEMSRESPONSE']._serialized_start=829
-  _globals['_BATCHCREATEITEMSRESPONSE']._serialized_end=958
-  _globals['_GETITEMREQUEST']._serialized_start=960
-  _globals['_GETITEMREQUEST']._serialized_end=1033
-  _globals['_GETITEMRESPONSE']._serialized_start=1035
-  _globals['_GETITEMRESPONSE']._serialized_end=1093
-  _globals['_LISTITEMSREQUEST']._serialized_start=1095
-  _globals['_LISTITEMSREQUEST']._serialized_end=1212
-  _globals['_LISTITEMSRESPONSE']._serialized_start=1214
-  _globals['_LISTITEMSRESPONSE']._serialized_end=1320
-  _globals['_UPDATEITEMREQUEST']._serialized_start=1323
-  _globals['_UPDATEITEMREQUEST']._serialized_end=1477
-  _globals['_UPDATEITEMRESPONSE']._serialized_start=1479
-  _globals['_UPDATEITEMRESPONSE']._serialized_end=1540
-  _globals['_DELETEITEMREQUEST']._serialized_start=1542
-  _globals['_DELETEITEMREQUEST']._serialized_end=1618
-  _globals['_DELETEITEMRESPONSE']._serialized_start=1620
-  _globals['_DELETEITEMRESPONSE']._serialized_end=1657
-  _globals['_BATCHDELETEITEMSREQUEST']._serialized_start=1659
-  _globals['_BATCHDELETEITEMSREQUEST']._serialized_end=1742
-  _globals['_BATCHDELETEITEMSRESPONSE']._serialized_start=1744
-  _globals['_BATCHDELETEITEMSRESPONSE']._serialized_end=1831
-  _globals['_SEARCHITEMSREQUEST']._serialized_start=1834
-  _globals['_SEARCHITEMSREQUEST']._serialized_end=1994
-  _globals['_SEARCHITEMSRESPONSE']._serialized_start=1996
-  _globals['_SEARCHITEMSRESPONSE']._serialized_end=2104
-  _globals['_ITEMSERVICE']._serialized_start=2107
-  _globals['_ITEMSERVICE']._serialized_end=2907
+  _globals['_ITEM']._serialized_start=154
+  _globals['_ITEM']._serialized_end=403
+  _globals['_CREATEITEMREQUEST']._serialized_start=406
+  _globals['_CREATEITEMREQUEST']._serialized_end=544
+  _globals['_CREATEITEMRESPONSE']._serialized_start=546
+  _globals['_CREATEITEMRESPONSE']._serialized_end=607
+  _globals['_BATCHCREATEITEMSREQUEST']._serialized_start=610
+  _globals['_BATCHCREATEITEMSREQUEST']._serialized_end=838
+  _globals['_BATCHCREATEITEMSREQUEST_ITEMINPUT']._serialized_start=748
+  _globals['_BATCHCREATEITEMSREQUEST_ITEMINPUT']._serialized_end=838
+  _globals['_BATCHCREATEITEMSRESPONSE']._serialized_start=841
+  _globals['_BATCHCREATEITEMSRESPONSE']._serialized_end=970
+  _globals['_GETITEMREQUEST']._serialized_start=972
+  _globals['_GETITEMREQUEST']._serialized_end=1045
+  _globals['_GETITEMRESPONSE']._serialized_start=1047
+  _globals['_GETITEMRESPONSE']._serialized_end=1105
+  _globals['_LISTITEMSREQUEST']._serialized_start=1108
+  _globals['_LISTITEMSREQUEST']._serialized_end=1237
+  _globals['_LISTITEMSRESPONSE']._serialized_start=1239
+  _globals['_LISTITEMSRESPONSE']._serialized_end=1357
+  _globals['_UPDATEITEMREQUEST']._serialized_start=1360
+  _globals['_UPDATEITEMREQUEST']._serialized_end=1514
+  _globals['_UPDATEITEMRESPONSE']._serialized_start=1516
+  _globals['_UPDATEITEMRESPONSE']._serialized_end=1577
+  _globals['_DELETEITEMREQUEST']._serialized_start=1579
+  _globals['_DELETEITEMREQUEST']._serialized_end=1655
+  _globals['_DELETEITEMRESPONSE']._serialized_start=1657
+  _globals['_DELETEITEMRESPONSE']._serialized_end=1694
+  _globals['_BATCHDELETEITEMSREQUEST']._serialized_start=1696
+  _globals['_BATCHDELETEITEMSREQUEST']._serialized_end=1779
+  _globals['_BATCHDELETEITEMSRESPONSE']._serialized_start=1781
+  _globals['_BATCHDELETEITEMSRESPONSE']._serialized_end=1868
+  _globals['_SEARCHITEMSREQUEST']._serialized_start=1871
+  _globals['_SEARCHITEMSREQUEST']._serialized_end=2043
+  _globals['_SEARCHITEMSRESPONSE']._serialized_start=2045
+  _globals['_SEARCHITEMSRESPONSE']._serialized_end=2165
+  _globals['_ITEMSERVICE']._serialized_start=2168
+  _globals['_ITEMSERVICE']._serialized_end=2968
 # @@protoc_insertion_point(module_scope)

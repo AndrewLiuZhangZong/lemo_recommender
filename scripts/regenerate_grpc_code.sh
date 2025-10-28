@@ -34,7 +34,7 @@ fi
 
 # 2. 清理旧文件
 echo "[2/5] 清理旧的生成文件..."
-rm -rf "$OUTPUT_DIR/common" "$OUTPUT_DIR/recommender"
+rm -rf "$OUTPUT_DIR/common" "$OUTPUT_DIR/recommender_common" "$OUTPUT_DIR/recommender"
 mkdir -p "$OUTPUT_DIR"
 
 # 3. 生成 Python 代码
@@ -44,7 +44,7 @@ python3 -m grpc_tools.protoc \
   --python_out="$OUTPUT_DIR" \
   --pyi_out="$OUTPUT_DIR" \
   --grpc_python_out="$OUTPUT_DIR" \
-  "$PROTO_SOURCE"/common/v1/*.proto \
+  "$PROTO_SOURCE"/recommender_common/v1/*.proto \
   "$PROTO_SOURCE"/recommender/v1/*.proto
 
 # 4. 创建 __init__.py 文件
@@ -54,13 +54,13 @@ echo "[4/5] 创建 __init__.py 文件..."
 find "$OUTPUT_DIR" -type d -exec touch {}/__init__.py \;
 
 # 创建 lemo 包结构
-mkdir -p "$OUTPUT_DIR/lemo/common/v1"
+mkdir -p "$OUTPUT_DIR/lemo/recommender_common/v1"
 mkdir -p "$OUTPUT_DIR/lemo/recommender/v1"
 
 # 创建 __init__.py
 touch "$OUTPUT_DIR/lemo/__init__.py"
-touch "$OUTPUT_DIR/lemo/common/__init__.py"
-touch "$OUTPUT_DIR/lemo/common/v1/__init__.py"
+touch "$OUTPUT_DIR/lemo/recommender_common/__init__.py"
+touch "$OUTPUT_DIR/lemo/recommender_common/v1/__init__.py"
 touch "$OUTPUT_DIR/lemo/recommender/__init__.py"
 touch "$OUTPUT_DIR/lemo/recommender/v1/__init__.py"
 

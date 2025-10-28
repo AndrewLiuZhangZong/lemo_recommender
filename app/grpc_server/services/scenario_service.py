@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Dict, Any
 
 from recommender.v1 import scenario_pb2, scenario_pb2_grpc
-from common.v1 import pagination_pb2
+from recommender_common.v1 import pagination_pb2
 
 from app.services.scenario.service import ScenarioService
 

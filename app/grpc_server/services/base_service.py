@@ -10,7 +10,7 @@ grpc_gen_path = Path(__file__).parent.parent.parent / "grpc_generated" / "python
 sys.path.insert(0, str(grpc_gen_path))
 
 from google.protobuf import struct_pb2, timestamp_pb2
-from common.v1 import pagination_pb2
+from recommender_common.v1 import pagination_pb2
 
 
 class BaseServicer:
