@@ -35,8 +35,7 @@ class TrainingStatus(str, Enum):
 class Model(MongoBaseModel):
     """推荐模型"""
     tenant_id: str = Field(..., description="租户ID")
-    scenario_id: str = Field(..., description="场景ID")
-    model_id: str = Field(..., description="模型ID（租户+场景内唯一）")
+    model_id: str = Field(..., description="模型ID（租户内唯一）")
     
     name: str = Field(..., description="模型名称")
     model_type: ModelType = Field(..., description="模型类型")
@@ -73,7 +72,6 @@ class Model(MongoBaseModel):
 class ModelCreate(MongoBaseModel):
     """创建模型请求"""
     tenant_id: str
-    scenario_id: str
     model_id: str
     name: str
     model_type: ModelType

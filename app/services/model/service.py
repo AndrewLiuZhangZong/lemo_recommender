@@ -29,7 +29,6 @@ class ModelService:
             # 检查模型ID是否已存在
             existing = await self.collection.find_one({
                 "tenant_id": tenant_id,
-                "scenario_id": data.scenario_id,
                 "model_id": data.model_id
             })
             
@@ -56,14 +55,12 @@ class ModelService:
     async def get_model(
         self,
         tenant_id: str,
-        scenario_id: str,
         model_id: str
     ) -> Optional[ModelResponse]:
         """获取模型详情"""
         try:
             model_doc = await self.collection.find_one({
                 "tenant_id": tenant_id,
-                "scenario_id": scenario_id,
                 "model_id": model_id
             })
             
@@ -78,7 +75,6 @@ class ModelService:
     async def list_models(
         self,
         tenant_id: Optional[str] = None,
-        scenario_id: Optional[str] = None,
         model_type: Optional[ModelType] = None,
         status: Optional[ModelStatus] = None,
         pagination: PaginationParams = PaginationParams()
@@ -89,8 +85,6 @@ class ModelService:
             query = {}
             if tenant_id and tenant_id.strip():
                 query["tenant_id"] = tenant_id
-            if scenario_id and scenario_id.strip():
-                query["scenario_id"] = scenario_id
             if model_type:
                 query["model_type"] = model_type
             if status:
@@ -125,7 +119,6 @@ class ModelService:
     async def update_model(
         self,
         tenant_id: str,
-        scenario_id: str,
         model_id: str,
         data: ModelUpdate
     ) -> Optional[ModelResponse]:
@@ -136,14 +129,13 @@ class ModelService:
             
             if not update_data:
                 # 没有要更新的字段
-                return await self.get_model(tenant_id, scenario_id, model_id)
+                return await self.get_model(tenant_id, model_id)
             
             update_data["updated_at"] = datetime.utcnow()
             
             result = await self.collection.update_one(
                 {
                     "tenant_id": tenant_id,
-                    "scenario_id": scenario_id,
                     "model_id": model_id
                 },
                 {"$set": update_data}
@@ -152,7 +144,7 @@ class ModelService:
             if result.matched_count == 0:
                 return None
             
-            return await self.get_model(tenant_id, scenario_id, model_id)
+            return await self.get_model(tenant_id, model_id)
         except Exception as e:
             logger.error(f"更新模型失败: {e}")
             raise
@@ -160,14 +152,12 @@ class ModelService:
     async def delete_model(
         self,
         tenant_id: str,
-        scenario_id: str,
         model_id: str
     ) -> bool:
         """删除模型"""
         try:
             result = await self.collection.delete_one({
                 "tenant_id": tenant_id,
-                "scenario_id": scenario_id,
                 "model_id": model_id
             })
             return result.deleted_count > 0
@@ -178,7 +168,6 @@ class ModelService:
     async def train_model(
         self,
         tenant_id: str,
-        scenario_id: str,
         model_id: str,
         request: TrainModelRequest
     ) -> ModelResponse:
@@ -195,7 +184,6 @@ class ModelService:
             await self.collection.update_one(
                 {
                     "tenant_id": tenant_id,
-                    "scenario_id": scenario_id,
                     "model_id": model_id
                 },
                 {"$set": update_data}
@@ -205,14 +193,13 @@ class ModelService:
             # 这里简化处理，直接模拟训练完成
             logger.info(f"开始训练模型: {model_id}")
             
-            return await self.get_model(tenant_id, scenario_id, model_id)
+            return await self.get_model(tenant_id, model_id)
         except Exception as e:
             logger.error(f"训练模型失败: {e}")
             # 更新状态为失败
             await self.collection.update_one(
                 {
                     "tenant_id": tenant_id,
-                    "scenario_id": scenario_id,
                     "model_id": model_id
                 },
                 {
@@ -228,12 +215,11 @@ class ModelService:
     async def get_training_status(
         self,
         tenant_id: str,
-        scenario_id: str,
         model_id: str
     ) -> dict:
         """获取训练状态"""
         try:
-            model = await self.get_model(tenant_id, scenario_id, model_id)
+            model = await self.get_model(tenant_id, model_id)
             if not model:
                 raise ValueError("模型不存在")
             
@@ -250,7 +236,6 @@ class ModelService:
     async def deploy_model(
         self,
         tenant_id: str,
-        scenario_id: str,
         model_id: str,
         request: DeployModelRequest
     ) -> ModelResponse:
@@ -267,14 +252,13 @@ class ModelService:
             await self.collection.update_one(
                 {
                     "tenant_id": tenant_id,
-                    "scenario_id": scenario_id,
                     "model_id": model_id
                 },
                 {"$set": update_data}
             )
             
             logger.info(f"模型已部署: {model_id}")
-            return await self.get_model(tenant_id, scenario_id, model_id)
+            return await self.get_model(tenant_id, model_id)
         except Exception as e:
             logger.error(f"部署模型失败: {e}")
             raise

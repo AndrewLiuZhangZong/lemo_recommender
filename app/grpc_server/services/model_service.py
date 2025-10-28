@@ -42,7 +42,6 @@ class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
             
             model_create = ModelCreate(
                 tenant_id=request.tenant_id,
-                scenario_id=request.scenario_id,
                 model_id=request.model_id,
                 name=request.name,
                 model_type=model_type,
@@ -79,7 +78,6 @@ class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
         try:
             result = await self.model_service.get_model(
                 tenant_id=request.tenant_id,
-                scenario_id=request.scenario_id,
                 model_id=request.model_id
             )
             
@@ -135,7 +133,6 @@ class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
             # 查询列表
             models, total = await self.model_service.list_models(
                 tenant_id=request.tenant_id if request.tenant_id else None,
-                scenario_id=request.scenario_id if request.scenario_id else None,
                 model_type=model_type,
                 status=status,
                 pagination=pagination
@@ -177,7 +174,6 @@ class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
             
             result = await self.model_service.update_model(
                 tenant_id=request.tenant_id,
-                scenario_id=request.scenario_id,
                 model_id=request.model_id,
                 data=model_update
             )
@@ -204,7 +200,6 @@ class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
         try:
             success = await self.model_service.delete_model(
                 tenant_id=request.tenant_id,
-                scenario_id=request.scenario_id,
                 model_id=request.model_id
             )
             
@@ -227,7 +222,6 @@ class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
             
             result = await self.model_service.train_model(
                 tenant_id=request.tenant_id,
-                scenario_id=request.scenario_id,
                 model_id=request.model_id,
                 request=train_request
             )
@@ -247,7 +241,6 @@ class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
         try:
             status_dict = await self.model_service.get_training_status(
                 tenant_id=request.tenant_id,
-                scenario_id=request.scenario_id,
                 model_id=request.model_id
             )
             
@@ -273,7 +266,6 @@ class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
             
             result = await self.model_service.deploy_model(
                 tenant_id=request.tenant_id,
-                scenario_id=request.scenario_id,
                 model_id=request.model_id,
                 request=deploy_request
             )
@@ -294,8 +286,6 @@ class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
             # 基本字段
             if "tenant_id" in data:
                 model_proto.tenant_id = data["tenant_id"]
-            if "scenario_id" in data:
-                model_proto.scenario_id = data["scenario_id"]
             if "model_id" in data:
                 model_proto.model_id = data["model_id"]
             if "name" in data:
