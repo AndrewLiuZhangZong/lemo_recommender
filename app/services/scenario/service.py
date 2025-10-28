@@ -48,7 +48,7 @@ class ScenarioService:
         result = await self.collection.insert_one(scenario_dict)
         scenario_dict["_id"] = result.inserted_id
         
-        return Scenario(**scenario_dict)
+        return Scenario.model_validate(scenario_dict)
     
     async def get_scenario(
         self,
@@ -63,7 +63,7 @@ class ScenarioService:
         })
         
         if doc:
-            return Scenario(**doc)
+            return Scenario.model_validate(doc)
         return None
     
     async def list_scenarios(
@@ -99,7 +99,15 @@ class ScenarioService:
         scenarios = []
         async for doc in cursor:
             logger.debug(f"查询到文档: scenario_id={doc.get('scenario_id')}, tenant_id={doc.get('tenant_id')}")
-            scenarios.append(Scenario(**doc))
+            try:
+                # 将 MongoDB 文档转换为 Pydantic 模型
+                # Pydantic 会自动处理类型转换和默认值
+                scenario = Scenario.model_validate(doc)
+                scenarios.append(scenario)
+            except Exception as e:
+                logger.error(f"转换场景数据失败: {e}, doc={doc}")
+                # 跳过无法转换的数据
+                continue
         
         logger.info(f"实际返回 {len(scenarios)} 条数据")
         return scenarios, total
@@ -131,7 +139,7 @@ class ScenarioService:
         )
         
         if result:
-            return Scenario(**result)
+            return Scenario.model_validate(result)
         return None
     
     async def delete_scenario(

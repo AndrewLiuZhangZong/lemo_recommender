@@ -49,7 +49,7 @@ class ItemService:
         result = await self.collection.insert_one(item_dict)
         item_dict["_id"] = result.inserted_id
         
-        return Item(**item_dict)
+        return Item.model_validate(item_dict)
     
     async def batch_create_items(
         self,
@@ -114,7 +114,7 @@ class ItemService:
         })
         
         if doc:
-            return Item(**doc)
+            return Item.model_validate(doc)
         return None
     
     async def list_items(
@@ -147,7 +147,13 @@ class ItemService:
         
         items = []
         async for doc in cursor:
-            items.append(Item(**doc))
+            try:
+                items.append(Item.model_validate(doc))
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"转换物品数据失败: {e}, doc={doc}")
+                continue
         
         return items, total
     
@@ -183,7 +189,7 @@ class ItemService:
         )
         
         if result:
-            return Item(**result)
+            return Item.model_validate(result)
         return None
     
     async def delete_item(
@@ -240,7 +246,7 @@ class ItemService:
         
         items = []
         async for doc in cursor:
-            items.append(Item(**doc))
+            items.append(Item.model_validate(doc))
         
         return items
     
@@ -267,7 +273,7 @@ class ItemService:
         
         items = []
         async for doc in cursor:
-            items.append(Item(**doc))
+            items.append(Item.model_validate(doc))
         
         return items
 

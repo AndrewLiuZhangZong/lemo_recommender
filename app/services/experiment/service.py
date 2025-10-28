@@ -46,7 +46,7 @@ class ExperimentService:
         })
         
         if doc:
-            return Experiment(**doc)
+            return Experiment.model_validate(doc)
         return None
     
     async def list_experiments(
@@ -66,7 +66,17 @@ class ExperimentService:
         
         docs = await self.experiments_collection.find(query).to_list(length=100)
         
-        return [Experiment(**doc) for doc in docs]
+        experiments = []
+        for doc in docs:
+            try:
+                experiments.append(Experiment.model_validate(doc))
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"转换实验数据失败: {e}, doc={doc}")
+                continue
+        
+        return experiments
     
     async def start_experiment(
         self,
