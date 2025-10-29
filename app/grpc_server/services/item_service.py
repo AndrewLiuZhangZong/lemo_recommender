@@ -20,25 +20,37 @@ class ItemServicer(item_pb2_grpc.ItemServiceServicer, BaseServicer):
     async def CreateItem(self, request, context) -> item_pb2.CreateItemResponse:
         """创建物品"""
         try:
+            from app.models.item import ItemCreate
+            
+            # 转换 metadata
             metadata = self._struct_to_dict(request.metadata) if request.metadata else {}
             
-            item_data = {
-                "tenant_id": request.tenant_id,
-                "scenario_id": request.scenario_id,
-                "item_id": request.item_id,
-                "metadata": metadata,
-                "embedding": list(request.embedding) if request.embedding else None,
-            }
+            # 构建 ItemCreate 对象
+            item_create = ItemCreate(
+                scenario_id=request.scenario_id,
+                item_id=request.item_id,
+                metadata=metadata,
+                embedding=list(request.embedding) if request.embedding else None,
+            )
             
-            result = await self.item_service.create_item(item_data)
+            # 调用服务层
+            result = await self.item_service.create_item(
+                tenant_id=request.tenant_id,
+                data=item_create
+            )
             
+            # 构建响应
             response = item_pb2.CreateItemResponse()
-            self._dict_to_item_proto(result, response.item)
+            self._dict_to_item_proto(result.model_dump(), response.item)
             return response
             
+        except ValueError as e:
+            context.set_code(grpc.StatusCode.ALREADY_EXISTS)
+            context.set_details(str(e))
+            raise
         except Exception as e:
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"创建物品失败: {str(e)}")
+            context.set_details(f"Unexpected {type(e).__name__}: {str(e)}")
             raise
     
     async def BatchCreateItems(self, request, context) -> item_pb2.BatchCreateItemsResponse:
@@ -90,14 +102,14 @@ class ItemServicer(item_pb2_grpc.ItemServiceServicer, BaseServicer):
                 raise grpc.RpcError()
             
             response = item_pb2.GetItemResponse()
-            self._dict_to_item_proto(result, response.item)
+            self._dict_to_item_proto(result.model_dump(), response.item)
             return response
             
         except grpc.RpcError:
             raise
         except Exception as e:
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"获取物品失败: {str(e)}")
+            context.set_details(f"Unexpected {type(e).__name__}: {str(e)}")
             raise
     
     async def ListItems(self, request, context) -> item_pb2.ListItemsResponse:
@@ -146,28 +158,43 @@ class ItemServicer(item_pb2_grpc.ItemServiceServicer, BaseServicer):
     async def UpdateItem(self, request, context) -> item_pb2.UpdateItemResponse:
         """更新物品"""
         try:
-            update_data = {}
-            if request.metadata:
-                update_data["metadata"] = self._struct_to_dict(request.metadata)
-            if request.embedding:
-                update_data["embedding"] = list(request.embedding)
-            if request.status:
-                update_data["status"] = request.status
+            from app.models.item import ItemUpdate
             
+            # 构建更新数据
+            update_dict = {}
+            if request.metadata:
+                update_dict["metadata"] = self._struct_to_dict(request.metadata)
+            if request.embedding:
+                update_dict["embedding"] = list(request.embedding)
+            if request.status:
+                update_dict["status"] = request.status
+            
+            # 创建 ItemUpdate 对象
+            item_update = ItemUpdate(**update_dict)
+            
+            # 调用服务层
             result = await self.item_service.update_item(
                 request.tenant_id,
                 request.scenario_id,
                 request.item_id,
-                update_data
+                item_update
             )
             
+            if not result:
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details("物品不存在")
+                raise grpc.RpcError()
+            
+            # 构建响应
             response = item_pb2.UpdateItemResponse()
-            self._dict_to_item_proto(result, response.item)
+            self._dict_to_item_proto(result.model_dump(), response.item)
             return response
             
+        except grpc.RpcError:
+            raise
         except Exception as e:
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"更新物品失败: {str(e)}")
+            context.set_details(f"Unexpected {type(e).__name__}: {str(e)}")
             raise
     
     async def DeleteItem(self, request, context) -> item_pb2.DeleteItemResponse:
