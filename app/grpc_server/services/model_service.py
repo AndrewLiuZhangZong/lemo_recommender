@@ -47,7 +47,7 @@ class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
                 model_type=model_type,
                 algorithm=request.algorithm,
                 version=request.version if request.version else "v1.0",
-                description=request.description if request.description else None,
+                description=None,  # description 字段不在 CreateModelRequest 中
                 config=config_dict
             )
             
