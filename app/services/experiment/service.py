@@ -143,6 +143,41 @@ class ExperimentService:
         
         return experiment
     
+    async def delete_experiment(
+        self,
+        tenant_id: str,
+        experiment_id: str,
+        soft_delete: bool = True
+    ) -> bool:
+        """删除实验"""
+        experiment = await self.get_experiment(tenant_id, experiment_id)
+        
+        if not experiment:
+            raise ValueError("实验不存在")
+        
+        if soft_delete:
+            # 软删除：更新状态为archived
+            result = await self.experiments_collection.update_one(
+                {
+                    "tenant_id": tenant_id,
+                    "experiment_id": experiment_id
+                },
+                {
+                    "$set": {
+                        "status": ExperimentStatus.ARCHIVED,
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+            return result.modified_count > 0
+        else:
+            # 硬删除
+            result = await self.experiments_collection.delete_one({
+                "tenant_id": tenant_id,
+                "experiment_id": experiment_id
+            })
+            return result.deleted_count > 0
+    
     def assign_variant(
         self,
         experiment: Experiment,
