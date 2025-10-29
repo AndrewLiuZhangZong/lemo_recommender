@@ -166,11 +166,17 @@ class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
             # 构造更新请求
             config_dict = MessageToDict(request.config) if request.config else None
             
+            # 安全地获取可选字段
+            name = request.name if hasattr(request, 'name') and request.name else None
+            algorithm = request.algorithm if hasattr(request, 'algorithm') and request.algorithm else None
+            version = request.version if hasattr(request, 'version') and request.version else None
+            description = request.description if hasattr(request, 'description') and request.description else None
+            
             model_update = ModelUpdate(
-                name=request.name if request.name else None,
-                algorithm=request.algorithm if request.algorithm else None,
-                version=request.version if request.version else None,
-                description=request.description if request.description else None,
+                name=name,
+                algorithm=algorithm,
+                version=version,
+                description=description,
                 config=config_dict
             )
             
