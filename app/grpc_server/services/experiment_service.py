@@ -24,16 +24,19 @@ class ExperimentServicer(experiment_pb2_grpc.ExperimentServiceServicer, BaseServ
             from bson import ObjectId
             
             # 自动生成 experiment_id
-
             experiment_id = str(ObjectId())
             
-            # 转换variants
+            # 转换variants（支持新的结构化策略配置）
             variants = []
             for group in request.groups:
+                # 解析策略配置
                 variant_config = {}
-                if group.HasField("config"):
-                    from google.protobuf.json_format import MessageToDict
-                    variant_config = MessageToDict(group.config)
+                if group.HasField("strategy"):
+                    variant_config = {
+                        "recall_model_ids": list(group.strategy.recall_model_ids),
+                        "rank_model_id": group.strategy.rank_model_id,
+                        "rerank_rule_ids": list(group.strategy.rerank_rule_ids),
+                    }
                 
                 variants.append(ExperimentVariant(
                     variant_id=group.group_id,
@@ -42,22 +45,34 @@ class ExperimentServicer(experiment_pb2_grpc.ExperimentServiceServicer, BaseServ
                     config=variant_config
                 ))
             
-            # 构建Experiment对象
+            # 解析流量分配方法
+            from app.models.experiment import TrafficSplitMethod
+            traffic_split_method = TrafficSplitMethod.USER_ID_HASH  # 默认值
+            if request.traffic_split_method == 1:
+                traffic_split_method = TrafficSplitMethod.USER_ID_HASH
+            elif request.traffic_split_method == 2:
+                traffic_split_method = TrafficSplitMethod.RANDOM
+            elif request.traffic_split_method == 3:
+                traffic_split_method = TrafficSplitMethod.WEIGHTED
+            
+            # 构建Experiment对象（包含所有业界标准字段）
             experiment = Experiment(
                 experiment_id=experiment_id,
                 tenant_id=request.tenant_id,
                 scenario_id=request.scenario_id,
                 name=request.name,
                 description=request.description if request.description else "",
-                hypothesis="",  # protobuf中没有此字段，使用默认值
+                hypothesis=request.hypothesis if request.hypothesis else "",
                 variants=variants,
+                traffic_split_method=traffic_split_method,
                 metrics=ExperimentMetrics(
                     primary_metric="ctr",  # 默认值
                     secondary_metrics=[],
                     guardrail_metrics=[]
                 ),
-                min_sample_size=1000,  # protobuf中没有此字段，使用默认值
-                confidence_level=0.95  # protobuf中没有此字段，使用默认值
+                min_sample_size=request.min_sample_size if request.min_sample_size else 1000,
+                confidence_level=request.confidence_level if request.confidence_level else 0.95,
+                created_by=request.created_by if request.created_by else "system"
             )
             
             # 调用服务创建
