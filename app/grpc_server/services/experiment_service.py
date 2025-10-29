@@ -49,15 +49,15 @@ class ExperimentServicer(experiment_pb2_grpc.ExperimentServiceServicer, BaseServ
                 scenario_id=request.scenario_id,
                 name=request.name,
                 description=request.description if request.description else "",
-                hypothesis=request.hypothesis if request.hypothesis else "",
+                hypothesis="",  # protobuf中没有此字段，使用默认值
                 variants=variants,
                 metrics=ExperimentMetrics(
                     primary_metric="ctr",  # 默认值
                     secondary_metrics=[],
                     guardrail_metrics=[]
                 ),
-                min_sample_size=request.min_sample_size if request.min_sample_size else 1000,
-                confidence_level=request.confidence_level if request.confidence_level else 0.95
+                min_sample_size=1000,  # protobuf中没有此字段，使用默认值
+                confidence_level=0.95  # protobuf中没有此字段，使用默认值
             )
             
             # 调用服务创建
