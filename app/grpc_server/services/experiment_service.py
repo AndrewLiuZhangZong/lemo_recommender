@@ -24,6 +24,7 @@ class ExperimentServicer(experiment_pb2_grpc.ExperimentServiceServicer, BaseServ
             from bson import ObjectId
             
             # 自动生成 experiment_id
+
             experiment_id = str(ObjectId())
             
             # 转换variants
@@ -47,15 +48,16 @@ class ExperimentServicer(experiment_pb2_grpc.ExperimentServiceServicer, BaseServ
                 tenant_id=request.tenant_id,
                 scenario_id=request.scenario_id,
                 name=request.name,
-                description=request.description,
-                hypothesis="",  # 前端可选
+                description=request.description if request.description else "",
+                hypothesis=request.hypothesis if request.hypothesis else "",
                 variants=variants,
                 metrics=ExperimentMetrics(
                     primary_metric="ctr",  # 默认值
                     secondary_metrics=[],
                     guardrail_metrics=[]
                 ),
-                created_by=request.created_by if request.created_by else "system"
+                min_sample_size=request.min_sample_size if request.min_sample_size else 1000,
+                confidence_level=request.confidence_level if request.confidence_level else 0.95
             )
             
             # 调用服务创建

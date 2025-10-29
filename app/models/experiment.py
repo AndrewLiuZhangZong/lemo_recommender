@@ -99,7 +99,7 @@ class Experiment(BaseModel):
     confidence_level: float = Field(default=0.95, description="置信水平")
     
     # 创建者
-    created_by: str = Field(..., description="创建者")
+    created_by: str = Field(default="system", description="创建者")
     
     class Config:
         json_schema_extra = {
