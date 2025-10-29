@@ -47,7 +47,7 @@ class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
                 model_type=model_type,
                 algorithm=request.algorithm,
                 version=request.version if request.version else "v1.0",
-                description=None,  # description 字段不在 CreateModelRequest 中
+                description=request.description if request.description else None,
                 config=config_dict
             )
             
@@ -306,13 +306,17 @@ class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
                 }
                 model_proto.model_type = type_map.get(data["model_type"], model_pb2.MODEL_TYPE_UNSPECIFIED)
             
-            # 状态
+            # 状态枚举映射
             if "status" in data:
-                model_proto.status = data["status"]
-            if "training_status" in data:
-                model_proto.training_status = data["training_status"]
-            if "training_progress" in data:
-                model_proto.training_progress = data["training_progress"]
+                status_map = {
+                    "draft": model_pb2.MODEL_STATUS_DRAFT,
+                    "training": model_pb2.MODEL_STATUS_TRAINING,
+                    "trained": model_pb2.MODEL_STATUS_TRAINED,
+                    "deployed": model_pb2.MODEL_STATUS_DEPLOYED,
+                    "failed": model_pb2.MODEL_STATUS_FAILED,
+                    "archived": model_pb2.MODEL_STATUS_ARCHIVED,
+                }
+                model_proto.status = status_map.get(data["status"], model_pb2.MODEL_STATUS_UNSPECIFIED)
             
             # 时间戳
             if "created_at" in data and data["created_at"]:

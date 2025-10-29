@@ -19,19 +19,23 @@ class ModelType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
 class ModelStatus(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     MODEL_STATUS_UNSPECIFIED: _ClassVar[ModelStatus]
+    MODEL_STATUS_DRAFT: _ClassVar[ModelStatus]
     MODEL_STATUS_TRAINING: _ClassVar[ModelStatus]
     MODEL_STATUS_TRAINED: _ClassVar[ModelStatus]
     MODEL_STATUS_DEPLOYED: _ClassVar[ModelStatus]
     MODEL_STATUS_FAILED: _ClassVar[ModelStatus]
+    MODEL_STATUS_ARCHIVED: _ClassVar[ModelStatus]
 MODEL_TYPE_UNSPECIFIED: ModelType
 MODEL_TYPE_RECALL: ModelType
 MODEL_TYPE_RANK: ModelType
 MODEL_TYPE_RERANK: ModelType
 MODEL_STATUS_UNSPECIFIED: ModelStatus
+MODEL_STATUS_DRAFT: ModelStatus
 MODEL_STATUS_TRAINING: ModelStatus
 MODEL_STATUS_TRAINED: ModelStatus
 MODEL_STATUS_DEPLOYED: ModelStatus
 MODEL_STATUS_FAILED: ModelStatus
+MODEL_STATUS_ARCHIVED: ModelStatus
 
 class Model(_message.Message):
     __slots__ = ("id", "tenant_id", "model_id", "name", "model_type", "algorithm", "version", "status", "config", "metrics", "model_path", "created_at", "updated_at", "trained_at", "deployed_at", "description")
