@@ -93,7 +93,7 @@ async def serve(host: str = "0.0.0.0", port: int = 50051):
     logger.info("  ✓ TemplateService")
     
     dataset_pb2_grpc.add_DatasetServiceServicer_to_server(
-        DatasetServicer(), server
+        DatasetServicer(db), server
     )
     logger.info("  ✓ DatasetService")
     

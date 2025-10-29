@@ -6,15 +6,13 @@ from recommender.v1 import dataset_pb2, dataset_pb2_grpc
 from app.services.dataset import DatasetService
 from app.models.dataset import DatasetCreate
 from app.models.base import PaginationParams
-from app.database import get_database
 
 
 class DatasetServicer(dataset_pb2_grpc.DatasetServiceServicer):
     """数据集服务 gRPC 实现"""
     
-    def __init__(self):
-        self.db = get_database()
-        self.service = DatasetService(self.db)
+    def __init__(self, db):
+        self.service = DatasetService(db)
     
     def _dataset_to_proto(self, dataset) -> dataset_pb2.Dataset:
         """将 Dataset 对象转换为 protobuf 消息"""
