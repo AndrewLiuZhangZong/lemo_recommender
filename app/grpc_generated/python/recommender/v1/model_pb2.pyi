@@ -34,7 +34,7 @@ MODEL_STATUS_DEPLOYED: ModelStatus
 MODEL_STATUS_FAILED: ModelStatus
 
 class Model(_message.Message):
-    __slots__ = ("id", "tenant_id", "model_id", "name", "model_type", "algorithm", "version", "status", "config", "metrics", "model_path", "created_at", "updated_at", "trained_at", "deployed_at")
+    __slots__ = ("id", "tenant_id", "model_id", "name", "model_type", "algorithm", "version", "status", "config", "metrics", "model_path", "created_at", "updated_at", "trained_at", "deployed_at", "description")
     ID_FIELD_NUMBER: _ClassVar[int]
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     MODEL_ID_FIELD_NUMBER: _ClassVar[int]
@@ -50,6 +50,7 @@ class Model(_message.Message):
     UPDATED_AT_FIELD_NUMBER: _ClassVar[int]
     TRAINED_AT_FIELD_NUMBER: _ClassVar[int]
     DEPLOYED_AT_FIELD_NUMBER: _ClassVar[int]
+    DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
     id: str
     tenant_id: str
     model_id: str
@@ -65,10 +66,11 @@ class Model(_message.Message):
     updated_at: _timestamp_pb2.Timestamp
     trained_at: _timestamp_pb2.Timestamp
     deployed_at: _timestamp_pb2.Timestamp
-    def __init__(self, id: _Optional[str] = ..., tenant_id: _Optional[str] = ..., model_id: _Optional[str] = ..., name: _Optional[str] = ..., model_type: _Optional[_Union[ModelType, str]] = ..., algorithm: _Optional[str] = ..., version: _Optional[str] = ..., status: _Optional[_Union[ModelStatus, str]] = ..., config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., metrics: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., model_path: _Optional[str] = ..., created_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., updated_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., trained_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., deployed_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+    description: str
+    def __init__(self, id: _Optional[str] = ..., tenant_id: _Optional[str] = ..., model_id: _Optional[str] = ..., name: _Optional[str] = ..., model_type: _Optional[_Union[ModelType, str]] = ..., algorithm: _Optional[str] = ..., version: _Optional[str] = ..., status: _Optional[_Union[ModelStatus, str]] = ..., config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., metrics: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., model_path: _Optional[str] = ..., created_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., updated_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., trained_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., deployed_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., description: _Optional[str] = ...) -> None: ...
 
 class CreateModelRequest(_message.Message):
-    __slots__ = ("tenant_id", "model_id", "name", "model_type", "algorithm", "version", "config")
+    __slots__ = ("tenant_id", "model_id", "name", "model_type", "algorithm", "version", "config", "description")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     MODEL_ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
@@ -76,6 +78,7 @@ class CreateModelRequest(_message.Message):
     ALGORITHM_FIELD_NUMBER: _ClassVar[int]
     VERSION_FIELD_NUMBER: _ClassVar[int]
     CONFIG_FIELD_NUMBER: _ClassVar[int]
+    DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     model_id: str
     name: str
@@ -83,7 +86,8 @@ class CreateModelRequest(_message.Message):
     algorithm: str
     version: str
     config: _struct_pb2.Struct
-    def __init__(self, tenant_id: _Optional[str] = ..., model_id: _Optional[str] = ..., name: _Optional[str] = ..., model_type: _Optional[_Union[ModelType, str]] = ..., algorithm: _Optional[str] = ..., version: _Optional[str] = ..., config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
+    description: str
+    def __init__(self, tenant_id: _Optional[str] = ..., model_id: _Optional[str] = ..., name: _Optional[str] = ..., model_type: _Optional[_Union[ModelType, str]] = ..., algorithm: _Optional[str] = ..., version: _Optional[str] = ..., config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., description: _Optional[str] = ...) -> None: ...
 
 class CreateModelResponse(_message.Message):
     __slots__ = ("model",)
