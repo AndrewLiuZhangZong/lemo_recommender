@@ -84,7 +84,8 @@ class ScenarioServicer(scenario_pb2_grpc.ScenarioServiceServicer):
                 raise grpc.RpcError()
             
             response = scenario_pb2.GetScenarioResponse()
-            self._dict_to_scenario_proto(result, response.scenario)
+            # 将 Pydantic 模型转换为字典
+            self._dict_to_scenario_proto(result.model_dump(), response.scenario)
             
             return response
             
