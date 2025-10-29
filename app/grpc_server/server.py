@@ -17,6 +17,7 @@ from recommender.v1 import (
     analytics_pb2_grpc,
     model_pb2_grpc,
     template_pb2_grpc,
+    dataset_pb2_grpc,
 )
 
 from .services import (
@@ -26,6 +27,7 @@ from .services import (
     AnalyticsServicer,
     ModelServicer,
     TemplateServicer,
+    DatasetServicer,
 )
 
 # 导入数据库
@@ -90,6 +92,11 @@ async def serve(host: str = "0.0.0.0", port: int = 50051):
     )
     logger.info("  ✓ TemplateService")
     
+    dataset_pb2_grpc.add_DatasetServiceServicer_to_server(
+        DatasetServicer(), server
+    )
+    logger.info("  ✓ DatasetService")
+    
     # 绑定端口
     listen_addr = f'{host}:{port}'
     server.add_insecure_port(listen_addr)
@@ -103,6 +110,7 @@ async def serve(host: str = "0.0.0.0", port: int = 50051):
     logger.info("  - lemo.recommender.v1.AnalyticsService")
     logger.info("  - lemo.recommender.v1.ModelService")
     logger.info("  - lemo.recommender.v1.TemplateService")
+    logger.info("  - lemo.recommender.v1.DatasetService")
     logger.info("="*60)
     
     # 启动服务器
