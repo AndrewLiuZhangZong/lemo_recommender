@@ -103,35 +103,44 @@ class ItemServicer(item_pb2_grpc.ItemServiceServicer, BaseServicer):
     async def ListItems(self, request, context) -> item_pb2.ListItemsResponse:
         """查询物品列表"""
         try:
-            filters = {
-                "tenant_id": request.tenant_id,
-                "scenario_id": request.scenario_id,
-            }
-            if request.status:
-                filters["status"] = request.status
+            from app.models.item import ItemListQuery
+            from app.models.base import PaginationParams
             
-            page = request.page.page if request.HasField("page") else 1
-            page_size = request.page.page_size if request.HasField("page") else 20
-            
-            result = await self.item_service.list_items(
-                filters=filters,
-                page=page,
-                page_size=page_size
+            # 构建查询条件
+            query = ItemListQuery(
+                scenario_id=request.scenario_id if request.scenario_id else None,
+                status=request.status if request.status else None
             )
             
-            response = item_pb2.ListItemsResponse()
-            for item in result.get("items", []):
-                item_proto = response.items.add()
-                self._dict_to_item_proto(item, item_proto)
+            # 构建分页参数
+            page = request.page.page if request.HasField("page") else 1
+            page_size = request.page.page_size if request.HasField("page") else 20
+            pagination = PaginationParams(page=page, page_size=page_size)
             
-            if "page_info" in result:
-                self._set_page_info(result["page_info"], response.page_info)
+            # 调用服务
+            items, total = await self.item_service.list_items(
+                tenant_id=request.tenant_id,
+                query=query,
+                pagination=pagination
+            )
+            
+            # 构建响应
+            response = item_pb2.ListItemsResponse()
+            for item in items:
+                item_proto = response.items.add()
+                self._dict_to_item_proto(item.model_dump(), item_proto)
+            
+            # 设置分页信息
+            response.page_info.page = page
+            response.page_info.page_size = page_size
+            response.page_info.total = total
+            response.page_info.total_pages = (total + page_size - 1) // page_size
             
             return response
             
         except Exception as e:
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"查询物品列表失败: {str(e)}")
+            context.set_details(f"Unexpected {type(e).__name__}: {str(e)}")
             raise
     
     async def UpdateItem(self, request, context) -> item_pb2.UpdateItemResponse:
