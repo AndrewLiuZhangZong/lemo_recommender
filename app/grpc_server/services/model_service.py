@@ -318,11 +318,27 @@ class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
                 }
                 model_proto.status = status_map.get(data["status"], model_pb2.MODEL_STATUS_UNSPECIFIED)
             
+            # config 字段（JSON -> Struct）
+            if "config" in data and data["config"]:
+                from google.protobuf.json_format import ParseDict
+                ParseDict(data["config"], model_proto.config)
+            
+            # metrics 字段（JSON -> Struct）
+            if "metrics" in data and data["metrics"]:
+                from google.protobuf.json_format import ParseDict
+                ParseDict(data["metrics"], model_proto.metrics)
+            
+            # 其他字符串字段
+            if "model_path" in data and data["model_path"]:
+                model_proto.model_path = data["model_path"]
+            
             # 时间戳
             if "created_at" in data and data["created_at"]:
                 model_proto.created_at.FromDatetime(data["created_at"])
             if "updated_at" in data and data["updated_at"]:
                 model_proto.updated_at.FromDatetime(data["updated_at"])
+            if "trained_at" in data and data["trained_at"]:
+                model_proto.trained_at.FromDatetime(data["trained_at"])
             if "deployed_at" in data and data["deployed_at"]:
                 model_proto.deployed_at.FromDatetime(data["deployed_at"])
             
