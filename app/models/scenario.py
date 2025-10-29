@@ -63,8 +63,8 @@ class ScenarioConfig(BaseModel):
     """场景配置详情"""
     
     # 特征配置
-    features: Dict[str, List[FeatureConfig]] = Field(
-        description="特征配置",
+    features: Dict[str, Any] = Field(
+        description="特征配置（支持灵活结构）",
         default_factory=lambda: {
             "item_features": [],
             "user_features": [],
@@ -83,13 +83,16 @@ class ScenarioConfig(BaseModel):
     )
     
     # 排序配置
-    rank: RankConfig = Field(
+    rank: Dict[str, Any] = Field(
         description="排序配置",
-        default=RankConfig(model="lightgbm", objective="click_rate")
+        default_factory=lambda: {
+            "model": "lightgbm",
+            "objective": "click_rate"
+        }
     )
     
-    # 重排配置
-    rerank: Dict[str, List[RerankRuleConfig]] = Field(
+    # 重排配置（支持灵活结构：rules数组或单个配置对象）
+    rerank: Dict[str, Any] = Field(
         description="重排配置",
         default_factory=lambda: {"rules": []}
     )
