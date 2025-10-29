@@ -134,18 +134,24 @@ class ListModelsResponse(_message.Message):
     def __init__(self, models: _Optional[_Iterable[_Union[Model, _Mapping]]] = ..., page_info: _Optional[_Union[_pagination_pb2.PageInfo, _Mapping]] = ...) -> None: ...
 
 class UpdateModelRequest(_message.Message):
-    __slots__ = ("tenant_id", "model_id", "name", "config", "status")
+    __slots__ = ("tenant_id", "model_id", "name", "config", "status", "algorithm", "version", "description")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     MODEL_ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     CONFIG_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
+    ALGORITHM_FIELD_NUMBER: _ClassVar[int]
+    VERSION_FIELD_NUMBER: _ClassVar[int]
+    DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     model_id: str
     name: str
     config: _struct_pb2.Struct
     status: ModelStatus
-    def __init__(self, tenant_id: _Optional[str] = ..., model_id: _Optional[str] = ..., name: _Optional[str] = ..., config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., status: _Optional[_Union[ModelStatus, str]] = ...) -> None: ...
+    algorithm: str
+    version: str
+    description: str
+    def __init__(self, tenant_id: _Optional[str] = ..., model_id: _Optional[str] = ..., name: _Optional[str] = ..., config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., status: _Optional[_Union[ModelStatus, str]] = ..., algorithm: _Optional[str] = ..., version: _Optional[str] = ..., description: _Optional[str] = ...) -> None: ...
 
 class UpdateModelResponse(_message.Message):
     __slots__ = ("model",)

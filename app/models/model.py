@@ -84,6 +84,8 @@ class ModelCreate(MongoBaseModel):
 class ModelUpdate(MongoBaseModel):
     """更新模型请求"""
     name: Optional[str] = None
+    algorithm: Optional[str] = None
+    version: Optional[str] = None
     description: Optional[str] = None
     config: Optional[Dict[str, Any]] = None
     status: Optional[ModelStatus] = None

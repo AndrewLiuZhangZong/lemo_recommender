@@ -168,6 +168,8 @@ class ModelServicer(model_pb2_grpc.ModelServiceServicer, BaseServicer):
             
             model_update = ModelUpdate(
                 name=request.name if request.name else None,
+                algorithm=request.algorithm if request.algorithm else None,
+                version=request.version if request.version else None,
                 description=request.description if request.description else None,
                 config=config_dict
             )
