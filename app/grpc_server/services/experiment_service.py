@@ -266,6 +266,20 @@ class ExperimentServicer(experiment_pb2_grpc.ExperimentServiceServicer, BaseServ
         proto.description = data.get("description", "")
         proto.hypothesis = data.get("hypothesis", "")
         
+        # 新增字段（业界标准）
+        # 流量分配方法
+        traffic_split_method_str = data.get("traffic_split_method", "user_id_hash")
+        traffic_split_method_map = {
+            "user_id_hash": 1,
+            "random": 2,
+            "weighted": 3,
+        }
+        proto.traffic_split_method = traffic_split_method_map.get(traffic_split_method_str, 1)
+        
+        # 统计配置
+        proto.min_sample_size = data.get("min_sample_size", 1000)
+        proto.confidence_level = data.get("confidence_level", 0.95)
+        
         # 状态映射
         status_str = data.get("status", "draft")
         status_map = {
@@ -297,12 +311,18 @@ class ExperimentServicer(experiment_pb2_grpc.ExperimentServiceServicer, BaseServ
                 group.name = variant.get("name", "")
                 group.traffic_ratio = variant.get("traffic_percentage", 0.0) / 100.0
                 
-                # config - 转换为JSON字符串或Struct
-                if "config" in variant:
-                    from google.protobuf import struct_pb2
-                    config_struct = struct_pb2.Struct()
-                    config_struct.update(variant["config"])
-                    group.config.CopyFrom(config_struct)
+                # strategy - 新的结构化策略配置
+                if "config" in variant and variant["config"]:
+                    config = variant["config"]
+                    # 召回模型ID列表
+                    if "recall_model_ids" in config:
+                        group.strategy.recall_model_ids.extend(config["recall_model_ids"])
+                    # 排序模型ID
+                    if "rank_model_id" in config:
+                        group.strategy.rank_model_id = config["rank_model_id"]
+                    # 重排规则ID列表
+                    if "rerank_rule_ids" in config:
+                        group.strategy.rerank_rule_ids.extend(config["rerank_rule_ids"])
         
         # created_by
         proto.created_by = data.get("created_by", "")
