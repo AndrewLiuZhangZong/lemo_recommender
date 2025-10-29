@@ -24,7 +24,7 @@ class ExperimentServicer(experiment_pb2_grpc.ExperimentServiceServicer, BaseServ
             from bson import ObjectId
             
             # 自动生成 experiment_id
-            experiment_id = ObjectId().hex
+            experiment_id = str(ObjectId())
             
             # 转换variants
             variants = []
