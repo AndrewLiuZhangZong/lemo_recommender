@@ -126,7 +126,11 @@ class ItemService:
         """查询物品列表"""
         
         # 构建查询条件
-        filter_query = {"tenant_id": tenant_id}
+        filter_query = {}
+        
+        # tenant_id为空时查询所有租户，否则只查询指定租户
+        if tenant_id:
+            filter_query["tenant_id"] = tenant_id
         
         if query:
             if query.scenario_id:
