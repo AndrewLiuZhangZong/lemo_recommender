@@ -9,6 +9,7 @@ sys.path.insert(0, str(grpc_gen_path))
 import grpc
 from google.protobuf import struct_pb2
 from google.protobuf import timestamp_pb2
+from google.protobuf.json_format import MessageToDict
 from datetime import datetime
 from typing import Dict, Any
 
@@ -285,8 +286,7 @@ class ScenarioServicer(scenario_pb2_grpc.ScenarioServiceServicer):
     
     def _struct_to_dict(self, struct: struct_pb2.Struct) -> Dict:
         """将 proto Struct 转换为 dict"""
-        import json
-        return json.loads(struct_pb2.Struct.to_json(struct))
+        return MessageToDict(struct)
     
     def _dict_to_struct(self, data: Dict, struct: struct_pb2.Struct):
         """将 dict 转换为 proto Struct"""
