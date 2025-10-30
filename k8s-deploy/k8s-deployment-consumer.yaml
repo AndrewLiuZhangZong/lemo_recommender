@@ -81,7 +81,7 @@ spec:
       - name: recommender-consumer
         image: ${IMAGE}
         imagePullPolicy: IfNotPresent
-        command: ["python3", "-m", "app.services.item.kafka_consumer"]
+        command: ["python3", "scripts/run_item_consumer.py"]
         env:
         - name: APP_ENV
           value: "prod"
@@ -102,26 +102,34 @@ spec:
         livenessProbe:
           exec:
             command:
-            - /bin/sh
+            - python3
             - -c
             - |
-              # 检查 Consumer 进程是否存在
-              ps aux | grep -v grep | grep kafka_consumer > /dev/null
+              import psutil, sys
+              for proc in psutil.process_iter(['cmdline']):
+                  cmdline = ' '.join(proc.info.get('cmdline') or [])
+                  if 'run_item_consumer' in cmdline or 'kafka_consumer' in cmdline:
+                      sys.exit(0)
+              sys.exit(1)
           initialDelaySeconds: 60
           periodSeconds: 60
-          timeoutSeconds: 5
+          timeoutSeconds: 10
           failureThreshold: 3
         readinessProbe:
           exec:
             command:
-            - /bin/sh
+            - python3
             - -c
             - |
-              # 检查进程存在即可（Kafka 连接由 liveness 检查）
-              ps aux | grep -v grep | grep kafka_consumer > /dev/null
+              import psutil, sys
+              for proc in psutil.process_iter(['cmdline']):
+                  cmdline = ' '.join(proc.info.get('cmdline') or [])
+                  if 'run_item_consumer' in cmdline or 'kafka_consumer' in cmdline:
+                      sys.exit(0)
+              sys.exit(1)
           initialDelaySeconds: 30
           periodSeconds: 30
-          timeoutSeconds: 5
+          timeoutSeconds: 10
 
 ---
 apiVersion: v1

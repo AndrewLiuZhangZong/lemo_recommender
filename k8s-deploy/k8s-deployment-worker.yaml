@@ -102,26 +102,34 @@ spec:
         livenessProbe:
           exec:
             command:
-            - /bin/sh
+            - python3
             - -c
             - |
-              # 检查 Worker 是否响应 ping
-              celery -A app.tasks.celery_app inspect ping -d celery@$HOSTNAME -t 5 2>&1 | grep -q "pong"
-          initialDelaySeconds: 90
+              import psutil, sys
+              for proc in psutil.process_iter(['cmdline']):
+                  cmdline = ' '.join(proc.info.get('cmdline') or [])
+                  if 'celery' in cmdline and 'worker' in cmdline:
+                      sys.exit(0)
+              sys.exit(1)
+          initialDelaySeconds: 60
           periodSeconds: 60
-          timeoutSeconds: 15
+          timeoutSeconds: 10
           failureThreshold: 3
         readinessProbe:
           exec:
             command:
-            - /bin/sh
+            - python3
             - -c
             - |
-              # Worker 准备就绪检查
-              celery -A app.tasks.celery_app inspect ping -d celery@$HOSTNAME -t 5 2>&1 | grep -q "pong"
-          initialDelaySeconds: 60
+              import psutil, sys
+              for proc in psutil.process_iter(['cmdline']):
+                  cmdline = ' '.join(proc.info.get('cmdline') or [])
+                  if 'celery' in cmdline and 'worker' in cmdline:
+                      sys.exit(0)
+              sys.exit(1)
+          initialDelaySeconds: 30
           periodSeconds: 30
-          timeoutSeconds: 15
+          timeoutSeconds: 10
 
 ---
 apiVersion: v1

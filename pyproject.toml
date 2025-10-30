@@ -29,6 +29,7 @@ clickhouse-driver = {version = "^0.2.7", optional = true}
 # 任务调度
 celery = {extras = ["redis"], version = "^5.3.4"}
 celery-redbeat = "^2.2.0"  # Redis 调度状态存储（Beat 服务必需）
+psutil = "^5.9.0"  # 进程监控（用于健康检查）
 
 # 推荐算法
 scikit-learn = "^1.4.0"
