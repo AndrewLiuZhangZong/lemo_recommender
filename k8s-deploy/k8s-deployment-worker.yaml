@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lemo-service-recommender-worker
+  namespace: lemo-dev
+  labels:
+    app: lemo-service-recommender
+    component: worker
+    environment: dev
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: lemo-service-recommender
+      component: worker
+      environment: dev
+  template:
+    metadata:
+      labels:
+        app: lemo-service-recommender
+        component: worker
+        environment: dev
+    spec:
+      serviceAccountName: lemo-service-recommender-sa
+      imagePullSecrets:
+      - name: regcred
+      containers:
+      - name: recommender-worker
+        image: ${IMAGE}
+        imagePullPolicy: IfNotPresent
+        command: ["celery", "-A", "app.tasks.celery_app", "worker", "-l", "info", "-c", "4", "-Q", "default,model_training,item_processing,user_profile"]
+        env:
+        - name: APP_ENV
+          value: "prod"
+        - name: K8S_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CELERY_BROKER_URL
+          value: "redis://:redis_password_2024@111.228.39.41:6379/1"
+        - name: CELERY_RESULT_BACKEND
+          value: "redis://:redis_password_2024@111.228.39.41:6379/2"
+        envFrom:
+        - configMapRef:
+            name: lemo-service-recommender-config
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - |
+              # 检查 Worker 是否响应 ping
+              celery -A app.tasks.celery_app inspect ping -d celery@$HOSTNAME -t 5 2>&1 | grep -q "pong"
+          initialDelaySeconds: 90
+          periodSeconds: 60
+          timeoutSeconds: 15
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - |
+              # Worker 准备就绪检查
+              celery -A app.tasks.celery_app inspect ping -d celery@$HOSTNAME -t 5 2>&1 | grep -q "pong"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 15
+

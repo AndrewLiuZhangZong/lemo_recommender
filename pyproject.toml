@@ -23,8 +23,12 @@ redis = {extras = ["hiredis"], version = "^5.0.1"}
 kafka-python = "^2.0.2"
 # apache-flink = "^1.17.0"  # Flink Python API (独立部署,不需要在API服务中)
 
+# ClickHouse (可选，数据分析必需)
+clickhouse-driver = {version = "^0.2.7", optional = true}
+
 # 任务调度
 celery = {extras = ["redis"], version = "^5.3.4"}
+celery-redbeat = "^2.2.0"  # Redis 调度状态存储（Beat 服务必需）
 
 # 推荐算法
 scikit-learn = "^1.4.0"

@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lemo-service-recommender-consumer
+  namespace: lemo-dev
+  labels:
+    app: lemo-service-recommender
+    component: consumer
+    environment: dev
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: lemo-service-recommender
+      component: consumer
+      environment: dev
+  template:
+    metadata:
+      labels:
+        app: lemo-service-recommender
+        component: consumer
+        environment: dev
+    spec:
+      serviceAccountName: lemo-service-recommender-sa
+      imagePullSecrets:
+      - name: regcred
+      containers:
+      - name: recommender-consumer
+        image: ${IMAGE}
+        imagePullPolicy: IfNotPresent
+        command: ["python3", "-m", "app.services.item.kafka_consumer"]
+        env:
+        - name: APP_ENV
+          value: "prod"
+        - name: K8S_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        envFrom:
+        - configMapRef:
+            name: lemo-service-recommender-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - |
+              # 检查 Consumer 进程是否存在
+              if ! ps aux | grep -v grep | grep kafka_consumer > /dev/null; then
+                exit 1
+              fi
+              # 检查 Kafka 连接（通过环境变量）
+              python3 -c "
+              from kafka import KafkaProducer
+              import os
+              try:
+                  producer = KafkaProducer(
+                      bootstrap_servers=os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092'),
+                      request_timeout_ms=5000,
+                      api_version_auto_timeout_ms=5000
+                  )
+                  producer.close()
+              except Exception as e:
+                  print(f'Kafka连接失败: {e}')
+                  exit(1)
+              " || exit 1
+          initialDelaySeconds: 60
+          periodSeconds: 60
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - |
+              # 检查进程存在即可（Kafka 连接由 liveness 检查）
+              ps aux | grep -v grep | grep kafka_consumer > /dev/null
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+

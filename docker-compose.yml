@@ -184,6 +184,32 @@ services:
     networks:
       - lemo-network
 
+  # ClickHouse (OLAP 数据库，用于行为数据分析)
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.1
+    container_name: lemo-clickhouse
+    ports:
+      - "8123:8123"  # HTTP 接口
+      - "9900:9000"  # Native TCP 接口（避免与 MinIO 9000 端口冲突）
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse_2024
+      CLICKHOUSE_DB: lemo_analytics
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    networks:
+      - lemo-network
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
   mongodb_data:
   redis_data:
@@ -193,6 +219,8 @@ volumes:
   milvus_data:
   prometheus_data:
   grafana_data:
+  clickhouse_data:
+  clickhouse_logs:
 
 networks:
   lemo-network:

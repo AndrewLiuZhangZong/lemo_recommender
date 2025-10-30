@@ -1,175 +1,316 @@
-# Lemo Recommender K8s 部署指南
+# K3s 部署指南
 
-## 📋 部署说明
+本目录包含推荐系统所有服务的 K3s 部署脚本和配置文件。
 
-本目录包含了推荐服务部署到 K3s 集群的相关配置和脚本。
+## 📁 文件清单
 
-## 🗂️ 文件说明
+### 部署脚本
 
-- `deploy-to-k3s.sh` - 一键部署脚本
-- `k8s-deployment.yaml` - Kubernetes 部署配置文件
-- `k3s-jd-config.yaml` - K3s 集群配置文件
+| 脚本 | 说明 | 部署服务 |
+|------|------|---------|
+| `deploy-to-k3s.sh` | 部署核心双服务（HTTP + gRPC）| ✅ HTTP API<br/>✅ gRPC |
+| `deploy-worker-service.sh` | 部署 Celery Worker 服务 | ✅ Worker |
+| `deploy-beat-service.sh` | 部署 Celery Beat 服务 | ✅ Beat |
+| `deploy-consumer-service.sh` | 部署 Kafka Consumer 服务 | ✅ Consumer |
+| `deploy-all-services.sh` | 一键部署所有服务 | ✅ HTTP API<br/>✅ gRPC<br/>✅ Worker<br/>✅ Beat<br/>✅ Consumer |
 
-## 🚀 部署步骤
+### K8s 配置文件
 
-### 1. 前置条件
+| 配置文件 | 说明 |
+|---------|------|
+| `k8s-deployment.yaml` | HTTP API + gRPC 服务配置 |
+| `k8s-deployment-worker.yaml` | Celery Worker 服务配置（2副本）|
+| `k8s-deployment-beat.yaml` | Celery Beat 服务配置（1副本）|
+| `k8s-deployment-consumer.yaml` | Kafka Consumer 服务配置 |
+| `k3s-jd-config.yaml` | K3s 集群配置文件 |
 
-- Docker 已安装并运行
-- 可访问阿里云容器镜像服务（ACR）
-- K3s 集群已配置并可访问
+---
 
-### 2. 执行部署
+## 🚀 快速开始
+
+### 方案1：部署核心服务（推荐）⭐
+
+**适用场景**：基础功能验证、API 服务
 
 ```bash
-cd /Users/a123/Lemo/lemo_recommender
+# 部署 HTTP API + gRPC
+cd /Users/edy/PycharmProjects/lemo_recommender
 ./k8s-deploy/deploy-to-k3s.sh
 ```
 
-### 3. 部署流程
+**部署结果**：
+- ✅ HTTP API（端口 10071，NodePort: 30801）
+- ✅ gRPC 服务（端口 10072，ClusterIP）
 
-脚本会自动执行以下步骤：
+**访问地址**：
+- HTTP API: `http://<K3S_NODE_IP>:30801/api/v1/docs`
+- Metrics: `http://<K3S_NODE_IP>:30802/metrics`
 
-1. **构建 Docker 镜像** - 基于当前代码构建镜像
-2. **登录 ACR** - 登录阿里云容器镜像服务
-3. **推送镜像** - 将镜像推送到 ACR
-4. **删除旧服务** - 删除可能存在的旧服务（避免冲突）
-5. **应用配置** - 部署到 K3s 集群
+---
 
-## 📦 部署内容
+### 方案2：部署完整系统
 
-### 服务组件
-
-1. **HTTP API Server** (2 副本)
-   - 端口：8000 (HTTP API)
-   - 端口：9090 (Prometheus Metrics)
-   - NodePort：30801 (HTTP), 30802 (Metrics)
-
-2. **gRPC Server** (2 副本)
-   - 端口：50051 (gRPC)
-   - 服务名：`lemo-service-recommender`
-   - ClusterIP 类型（集群内访问）
-
-### 配置资源
-
-- **ConfigMap**: `lemo-service-recommender-config`
-  - 包含所有环境变量配置
-  - MongoDB、Redis、Kafka、Milvus 连接信息
-
-- **ServiceAccount**: `lemo-service-recommender-sa`
-- **Role & RoleBinding**: 授予必要的 K8s 权限
-
-## 🔍 验证部署
-
-### 查看 Pods 状态
+**适用场景**：生产环境、需要模型训练和 Kafka 消费
 
 ```bash
-kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get pods -l app=lemo-service-recommender
+# 一键部署所有服务
+cd /Users/edy/PycharmProjects/lemo_recommender
+./k8s-deploy/deploy-all-services.sh
 ```
+
+**部署结果**：
+- ✅ HTTP API（端口 10071）
+- ✅ gRPC 服务（端口 10072）
+- ✅ Celery Worker（2副本，支持模型训练）
+- ✅ Celery Beat（1副本，定时任务调度）
+- ✅ Kafka Consumer（消费物品事件）
+
+---
+
+### 方案3：按需部署服务
+
+**适用场景**：逐步扩展功能
+
+```bash
+# 1. 先部署核心服务
+./k8s-deploy/deploy-to-k3s.sh
+
+# 2. 需要模型训练时，部署 Worker + Beat
+./k8s-deploy/deploy-worker-service.sh
+./k8s-deploy/deploy-beat-service.sh
+
+# 3. 需要 Kafka 物品接入时，部署 Consumer
+./k8s-deploy/deploy-consumer-service.sh
+```
+
+---
+
+## 📊 服务架构
+
+### 当前部署架构（方案1）
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   K3s Cluster                        │
+│                                                      │
+│  ┌──────────────────────┐  ┌──────────────────────┐ │
+│  │  HTTP API Service    │  │   gRPC Service       │ │
+│  │  Port: 10071         │  │   Port: 10072        │ │
+│  │  NodePort: 30801     │  │   ClusterIP          │ │
+│  └──────────────────────┘  └──────────────────────┘ │
+│           │                          │               │
+└───────────┼──────────────────────────┼───────────────┘
+            │                          │
+            ▼                          ▼
+    ┌──────────────────────────────────────────┐
+    │         外部依赖服务                       │
+    │  • MongoDB (111.228.39.41:27017)        │
+    │  • Redis (111.228.39.41:6379)           │
+    │  • Kafka (111.228.39.41:9092)           │
+    │  • Milvus (111.228.39.41:19530)         │
+    └──────────────────────────────────────────┘
+```
+
+### 完整架构（方案2）
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                          K3s Cluster                             │
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
+│  │  HTTP API    │  │   gRPC       │  │   Celery Worker (×2)   │ │
+│  │  Port: 10071 │  │   Port: 10072│  │   Queues: 4            │ │
+│  └──────────────┘  └──────────────┘  └────────────────────────┘ │
+│                                                                  │
+│  ┌──────────────┐  ┌────────────────────────────────────────┐  │
+│  │ Celery Beat  │  │   Kafka Consumer                        │  │
+│  │ (×1)         │  │   Topics: item-events-{tenant_id}      │  │
+│  └──────────────┘  └────────────────────────────────────────┘  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔍 服务管理
 
 ### 查看服务状态
 
 ```bash
+# 查看所有 Pod
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get pods -l app=lemo-service-recommender
+
+# 查看所有 Service
 kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get svc -l app=lemo-service-recommender
+
+# 查看特定组件
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get pods -l component=http
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get pods -l component=grpc
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get pods -l component=worker
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get pods -l component=beat
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get pods -l component=consumer
 ```
 
-### 查看 HTTP API 日志
+### 查看日志
 
 ```bash
+# HTTP API 日志
 kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev logs -f deployment/lemo-service-recommender-http
+
+# gRPC 日志
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev logs -f deployment/lemo-service-recommender-grpc
+
+# Worker 日志
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev logs -f deployment/lemo-service-recommender-worker
+
+# Beat 日志
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev logs -f deployment/lemo-service-recommender-beat
+
+# Consumer 日志
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev logs -f deployment/lemo-service-recommender-consumer
 ```
 
-### 查看 gRPC Server 日志
+### 扩缩容
 
 ```bash
-kubectl --kubeconfig=k8s-deploy/k8s-jd-config.yaml -n lemo-dev logs -f deployment/lemo-service-recommender-grpc
+# 扩展 HTTP API 到 3 副本
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev scale deployment lemo-service-recommender-http --replicas=3
+
+# 扩展 Worker 到 4 副本
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev scale deployment lemo-service-recommender-worker --replicas=4
 ```
 
-## 🌐 访问服务
-
-### HTTP API
-
-- **集群外访问**: `http://<K3s-Node-IP>:30801`
-- **健康检查**: `http://<K3s-Node-IP>:30801/health`
-- **API 文档**: `http://<K3s-Node-IP>:30801/docs`
-- **Prometheus**: `http://<K3s-Node-IP>:30802/metrics`
-
-### gRPC API
-
-- **集群内访问**: `lemo-service-recommender.lemo-dev.svc.cluster.local:50051`
-- **服务发现**: `discovery:///lemo-service-recommender`
-
-## 🛠️ 配置修改
-
-### 修改环境变量
-
-编辑 `k8s-deployment.yaml` 中的 ConfigMap：
-
-```yaml
-data:
-  config.env: |
-    ENV=prod
-    LOG_LEVEL=INFO
-    MONGODB_URL=mongodb://lemo-mongodb:27017
-    # ... 其他配置
-```
-
-### 修改副本数
-
-编辑 `k8s-deployment.yaml` 中的 Deployment spec:
-
-```yaml
-spec:
-  replicas: 2  # 修改副本数
-```
-
-### 修改资源限制
-
-编辑 `k8s-deployment.yaml` 中的 resources:
-
-```yaml
-resources:
-  requests:
-    memory: "512Mi"
-    cpu: "500m"
-  limits:
-    memory: "2Gi"
-    cpu: "2000m"
-```
-
-## 🔄 更新部署
-
-重新运行部署脚本即可：
+### 删除服务
 
 ```bash
-./k8s-deploy/deploy-to-k3s.sh
-```
+# 删除所有服务
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev delete deployment -l app=lemo-service-recommender
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev delete svc -l app=lemo-service-recommender
 
-脚本会自动构建新镜像并执行滚动更新，服务不会中断。
-
-## ❌ 删除部署
-
-```bash
+# 删除特定服务
 kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev delete deployment lemo-service-recommender-http
 kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev delete deployment lemo-service-recommender-grpc
-kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev delete svc lemo-service-recommender-http
-kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev delete svc lemo-service-recommender
-kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev delete configmap lemo-service-recommender-config
-kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev delete sa lemo-service-recommender-sa
-kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev delete role lemo-service-recommender-role
-kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev delete rolebinding lemo-service-recommender-rolebinding
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev delete deployment lemo-service-recommender-worker
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev delete deployment lemo-service-recommender-beat
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev delete deployment lemo-service-recommender-consumer
 ```
 
-## 📝 注意事项
+---
 
-1. **首次部署**需要手动创建 `regcred` secret（镜像拉取凭证）
-2. **NodePort 端口**（30801, 30802）需确保不与其他服务冲突
-3. **资源配置**根据实际负载调整
-4. **依赖服务**（MongoDB、Redis、Kafka、Milvus）需提前部署
-5. **服务名称** `lemo-service-recommender` 遵循项目统一命名规范
+## 🛠️ 故障排查
 
-## 🔗 相关链接
+### 问题1：Pod 无法启动
 
-- [Kubernetes 文档](https://kubernetes.io/docs/)
-- [K3s 文档](https://docs.k3s.io/)
-- [阿里云 ACR](https://help.aliyun.com/product/60716.html)
+```bash
+# 查看 Pod 详情
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev describe pod <POD_NAME>
 
+# 查看事件
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get events --sort-by='.lastTimestamp'
+```
+
+### 问题2：镜像拉取失败
+
+```bash
+# 检查镜像密钥
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get secret regcred
+
+# 重新创建密钥
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev delete secret regcred
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev create secret docker-registry regcred \
+  --docker-server=registry.cn-beijing.aliyuncs.com \
+  --docker-username=北京乐莫科技 \
+  --docker-password=Andrew1870361
+```
+
+### 问题3：服务无法访问
+
+```bash
+# 检查 Service
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get svc
+
+# 检查端口映射
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev describe svc lemo-service-recommender-http
+
+# 测试健康检查
+curl http://<K3S_NODE_IP>:30801/health
+```
+
+### 问题4：Worker 任务不执行
+
+```bash
+# 进入 Worker Pod
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev exec -it deployment/lemo-service-recommender-worker -- bash
+
+# 检查 Celery 连接
+celery -A app.tasks.celery_app inspect ping
+
+# 查看活跃任务
+celery -A app.tasks.celery_app inspect active
+
+# 查看注册的任务
+celery -A app.tasks.celery_app inspect registered
+```
+
+### 问题5：Consumer 不消费消息
+
+```bash
+# 进入 Consumer Pod
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev exec -it deployment/lemo-service-recommender-consumer -- bash
+
+# 检查 Kafka 连接
+python3 -c "from kafka import KafkaConsumer; c = KafkaConsumer(bootstrap_servers='111.228.39.41:9092'); print('OK')"
+
+# 查看日志
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev logs -f deployment/lemo-service-recommender-consumer
+```
+
+---
+
+## 📝 配置说明
+
+### ConfigMap 配置项
+
+所有服务共享 `lemo-service-recommender-config` ConfigMap：
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `ENV` | 运行环境 | `prod` |
+| `LOG_LEVEL` | 日志级别 | `INFO` |
+| `MONGODB_URL` | MongoDB 连接地址 | `mongodb://lemo_user:***@111.228.39.41:27017/lemo_recommender` |
+| `REDIS_URL` | Redis 连接地址 | `redis://:***@111.228.39.41:6379/0` |
+| `KAFKA_BOOTSTRAP_SERVERS` | Kafka 地址 | `111.228.39.41:9092` |
+| `MILVUS_HOST` | Milvus 地址 | `111.228.39.41` |
+| `MILVUS_PORT` | Milvus 端口 | `19530` |
+| `HTTP_PORT` | HTTP API 端口 | `10071` |
+| `GRPC_PORT` | gRPC 端口 | `10072` |
+
+### 资源限制
+
+| 服务 | CPU 请求/限制 | 内存 请求/限制 | 副本数 |
+|------|--------------|---------------|--------|
+| HTTP API | 100m / 500m | 128Mi / 512Mi | 1 |
+| gRPC | 100m / 500m | 128Mi / 512Mi | 1 |
+| Worker | 500m / 2000m | 512Mi / 2Gi | 2 |
+| Beat | 100m / 200m | 128Mi / 256Mi | 1 |
+| Consumer | 250m / 500m | 256Mi / 512Mi | 1 |
+
+**总计**（完整部署）：
+- CPU: 2.4 cores（请求）/ 7.9 cores（限制）
+- 内存: 1.9Gi（请求）/ 7.0Gi（限制）
+
+---
+
+## 🔗 相关文档
+
+- [服务拆分方案](../docs/服务拆分方案.md) - 详细架构设计
+- [系统设计](../docs/系统设计.md) - 整体设计文档
+- [物品数据接入指南](../docs/物品数据接入指南.md) - 物品数据接入
+- [行为数据埋点指南](../docs/行为数据埋点指南.md) - 行为埋点接入
+- [开发指南](../docs/开发指南.md) - 开发和测试指南
+
+---
+
+## 📞 联系方式
+
+如有问题，请联系开发团队或查看项目文档。
