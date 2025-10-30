@@ -53,21 +53,21 @@ class Redis:
     async def connect(self):
         """建立连接池"""
         try:
-            # 使用直接参数而不是URL，避免认证格式问题
-            self.client = aioredis.Redis(
-                host=settings.redis_url.split('@')[-1].split(':')[0] if '@' in settings.redis_url else 'localhost',
-                port=6379,
-                password=settings.redis_password if settings.redis_password else None,
-                db=0,
+            # 直接使用 Redis URL（支持完整的认证信息）
+            self.client = aioredis.from_url(
+                settings.redis_url,
                 max_connections=settings.redis_max_connections,
                 decode_responses=True,
             )
             
             # 测试连接
             await self.client.ping()
-            print(f"✅ Redis连接成功: localhost:6379")
+            # 从URL中提取host用于显示
+            host_part = settings.redis_url.split('@')[-1] if '@' in settings.redis_url else settings.redis_url.split('//')[1]
+            print(f"✅ Redis连接成功: {host_part.split('/')[0]}")
         except Exception as e:
             print(f"⚠️  Redis连接失败: {e}")
+            print(f"⚠️  Redis URL: {settings.redis_url}")
             print("⚠️  系统将以无缓存模式运行")
             self.client = None
             self.pool = None
