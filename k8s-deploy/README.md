@@ -8,7 +8,7 @@
 
 | 脚本 | 说明 | 部署服务 |
 |------|------|---------|
-| `deploy-to-k3s.sh` | 部署核心双服务（HTTP + gRPC）| ✅ HTTP API<br/>✅ gRPC |
+| `deploy-http-grpc-service.sh` | 部署核心双服务（HTTP + gRPC）| ✅ HTTP API<br/>✅ gRPC |
 | `deploy-worker-service.sh` | 部署 Celery Worker 服务 | ✅ Worker |
 | `deploy-beat-service.sh` | 部署 Celery Beat 服务 | ✅ Beat |
 | `deploy-consumer-service.sh` | 部署 Kafka Consumer 服务 | ✅ Consumer |
@@ -35,7 +35,7 @@
 ```bash
 # 部署 HTTP API + gRPC
 cd /Users/edy/PycharmProjects/lemo_recommender
-./k8s-deploy/deploy-to-k3s.sh
+./k8s-deploy/deploy-http-grpc-service.sh
 ```
 
 **部署结果**：
@@ -73,7 +73,7 @@ cd /Users/edy/PycharmProjects/lemo_recommender
 
 ```bash
 # 1. 先部署核心服务
-./k8s-deploy/deploy-to-k3s.sh
+./k8s-deploy/deploy-http-grpc-service.sh
 
 # 2. 需要模型训练时，部署 Worker + Beat
 ./k8s-deploy/deploy-worker-service.sh

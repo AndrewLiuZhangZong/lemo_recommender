@@ -273,7 +273,7 @@ chmod +x /etc/cron.daily/k3s-cleanup
 
 ### 2. 部署策略优化
 
-修改 `k8s-deploy/deploy-to-k3s.sh`，每次部署时清理旧镜像：
+修改 `k8s-deploy/deploy-http-grpc-service.sh`（或其他部署脚本），每次部署时清理旧镜像：
 
 ```bash
 # 在推送新镜像后添加
