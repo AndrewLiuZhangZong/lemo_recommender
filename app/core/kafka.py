@@ -21,8 +21,6 @@ class KafkaProducer:
                 value_serializer=lambda v: json.dumps(v, ensure_ascii=False, default=str).encode('utf-8'),
                 key_serializer=lambda k: k.encode('utf-8') if k else None,
                 acks='all',  # 等待所有副本确认
-                retries=3,
-                max_in_flight_requests_per_connection=5,
                 compression_type='gzip'
             )
         except ImportError:
