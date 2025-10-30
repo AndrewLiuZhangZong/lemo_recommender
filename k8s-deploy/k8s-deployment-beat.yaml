@@ -1,11 +1,61 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lemo-service-recommender-config
+  namespace: lemo-dev
+  labels:
+    app: lemo-service-recommender-beat
+    environment: dev
+data:
+  # Application
+  ENV: "prod"
+  LOG_LEVEL: "INFO"
+  
+  # MongoDB (外网服务器)
+  MONGODB_URL: "mongodb://lemo_user:lemo_password_2024@111.228.39.41:27017/lemo_recommender"
+  MONGODB_DATABASE: "lemo_recommender"
+  
+  # Redis (外网服务器)
+  REDIS_URL: "redis://:redis_password_2024@111.228.39.41:6379/0"
+  
+  # Celery (使用 Redis)
+  CELERY_BROKER_URL: "redis://:redis_password_2024@111.228.39.41:6379/1"
+  CELERY_RESULT_BACKEND: "redis://:redis_password_2024@111.228.39.41:6379/2"
+  
+  # Kafka (外网服务器)
+  KAFKA_BOOTSTRAP_SERVERS: "111.228.39.41:9092"
+  KAFKA_ITEM_INGEST_TOPICS: '["items-ingest","vlog-items","news-items"]'
+  
+  # Milvus (外网服务器)
+  MILVUS_HOST: "111.228.39.41"
+  MILVUS_PORT: "19530"
+  
+  # MinIO (外网服务器 - 如果需要)
+  MINIO_ENDPOINT: "111.228.39.41:9000"
+  MINIO_ACCESS_KEY: "minioadmin"
+  MINIO_SECRET_KEY: "minioadmin"
+  
+  # Etcd (外网服务器 - 如果需要)
+  ETCD_ENDPOINTS: "111.228.39.41:2379"
+  
+  # Prometheus
+  PROMETHEUS_PORT: "9090"
+  
+  # API Server
+  HTTP_HOST: "0.0.0.0"
+  HTTP_PORT: "10071"
+  
+  # gRPC Server
+  GRPC_HOST: "0.0.0.0"
+  GRPC_PORT: "10072"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: lemo-service-recommender-beat
   namespace: lemo-dev
   labels:
-    app: lemo-service-recommender
-    component: beat
+    app: lemo-service-recommender-beat
     environment: dev
 spec:
   replicas: 1  # Beat 只能1个副本！
@@ -13,17 +63,15 @@ spec:
     type: Recreate  # Beat 不支持滚动更新
   selector:
     matchLabels:
-      app: lemo-service-recommender
-      component: beat
+      app: lemo-service-recommender-beat
       environment: dev
   template:
     metadata:
       labels:
-        app: lemo-service-recommender
-        component: beat
+        app: lemo-service-recommender-beat
         environment: dev
     spec:
-      serviceAccountName: lemo-service-recommender-sa
+      serviceAccountName: lemo-service-recommender-beat-sa
       imagePullSecrets:
       - name: regcred
       containers:
@@ -86,3 +134,48 @@ spec:
           periodSeconds: 30
           timeoutSeconds: 10
 
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: lemo-service-recommender-beat-sa
+  namespace: lemo-dev
+  labels:
+    app: lemo-service-recommender-beat
+    environment: dev
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lemo-service-recommender-beat-role
+  namespace: lemo-dev
+  labels:
+    app: lemo-service-recommender-beat
+    environment: dev
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lemo-service-recommender-beat-rolebinding
+  namespace: lemo-dev
+  labels:
+    app: lemo-service-recommender-beat
+    environment: dev
+subjects:
+- kind: ServiceAccount
+  name: lemo-service-recommender-beat-sa
+  namespace: lemo-dev
+roleRef:
+  kind: Role
+  name: lemo-service-recommender-beat-role
+  apiGroup: rbac.authorization.k8s.io

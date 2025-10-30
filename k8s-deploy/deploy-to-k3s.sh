@@ -9,7 +9,7 @@ ACR_TAG="$(date +%Y-%m-%d-%H-%M-%S)"  # 用时间戳做唯一tag，格式：yyyy
 ACR_USERNAME="北京乐莫科技"   # ACR用户名（如阿里云账号ID或自定义）
 ACR_PASSWORD="Andrew1870361"  # ACR密码（建议用环境变量或交互输入）
 KUBECONFIG_FILE="$(pwd)/k8s-deploy/k3s-jd-config.yaml"
-K8S_YAML="$(pwd)/k8s-deploy/k8s-deployment.yaml"  # K8S配置文件路径
+K8S_YAML="$(pwd)/k8s-deploy/k8s-deployment-http-grpc.yaml"  # K8S配置文件路径（HTTP + gRPC服务）
 TMP_YAML="/tmp/k8s-recommender-deploy-apply.yaml"
 NAMESPACE="lemo-dev"
 

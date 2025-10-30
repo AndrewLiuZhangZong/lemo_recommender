@@ -73,7 +73,7 @@ echo "[5/6] 部署所有服务..."
 # 部署 HTTP + gRPC
 echo "  → 部署 HTTP API + gRPC 服务..."
 export IMAGE=$HTTP_IMAGE
-K8S_YAML="$(pwd)/k8s-deploy/k8s-deployment.yaml"
+K8S_YAML="$(pwd)/k8s-deploy/k8s-deployment-http-grpc.yaml"
 TMP_YAML="/tmp/k8s-recommender-http-apply.yaml"
 envsubst < $K8S_YAML > $TMP_YAML
 
