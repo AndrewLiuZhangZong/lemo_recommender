@@ -7,7 +7,7 @@
 - 标准化字段
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Dict, Any, Optional
 from enum import Enum
 from datetime import datetime
@@ -113,14 +113,16 @@ class BehaviorEvent(BaseModel):
     # === 额外数据（JSON） ===
     extra_data: Optional[Dict[str, Any]] = Field(default_factory=dict, description="额外数据（场景特定）")
     
-    @validator('tenant_id', 'scenario_id', 'user_id', 'item_id')
-    def validate_not_empty(cls, v, field):
+    @field_validator('tenant_id', 'scenario_id', 'user_id', 'item_id')
+    @classmethod
+    def validate_not_empty(cls, v, info):
         """验证字段不能为空"""
         if not v or not v.strip():
-            raise ValueError(f"{field.name} cannot be empty")
+            raise ValueError(f"{info.field_name} cannot be empty")
         return v.strip()
     
-    @validator('completion_rate')
+    @field_validator('completion_rate')
+    @classmethod
     def validate_completion_rate(cls, v):
         """验证完成率范围"""
         if v is not None and (v < 0 or v > 1):
