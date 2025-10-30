@@ -24,7 +24,7 @@ data:
   
   # Kafka (外网服务器)
   KAFKA_BOOTSTRAP_SERVERS: "111.228.39.41:9092"
-  KAFKA_ITEM_INGEST_TOPICS: "items-ingest,vlog-items,news-items"
+  KAFKA_ITEM_INGEST_TOPICS: '["items-ingest","vlog-items","news-items"]'
   
   # Milvus (外网服务器)
   MILVUS_HOST: "111.228.39.41"
