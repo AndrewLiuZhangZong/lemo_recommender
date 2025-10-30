@@ -18,8 +18,13 @@ data:
   # Redis (外网服务器)
   REDIS_URL: "redis://:redis_password_2024@111.228.39.41:6379/0"
   
+  # Celery (使用 Redis)
+  CELERY_BROKER_URL: "redis://:redis_password_2024@111.228.39.41:6379/1"
+  CELERY_RESULT_BACKEND: "redis://:redis_password_2024@111.228.39.41:6379/2"
+  
   # Kafka (外网服务器)
   KAFKA_BOOTSTRAP_SERVERS: "111.228.39.41:9092"
+  KAFKA_ITEM_INGEST_TOPICS: "items-ingest,vlog-items,news-items"
   
   # Milvus (外网服务器)
   MILVUS_HOST: "111.228.39.41"

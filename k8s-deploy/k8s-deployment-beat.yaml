@@ -47,10 +47,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: CELERY_BROKER_URL
-          value: "redis://:redis_password_2024@111.228.39.41:6379/1"
-        - name: CELERY_RESULT_BACKEND
-          value: "redis://:redis_password_2024@111.228.39.41:6379/2"
         envFrom:
         - configMapRef:
             name: lemo-service-recommender-config
