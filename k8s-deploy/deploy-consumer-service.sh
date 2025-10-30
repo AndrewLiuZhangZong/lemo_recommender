@@ -4,7 +4,7 @@ set -e
 # 配置项（请根据实际情况修改）
 ACR_REGISTRY="registry.cn-beijing.aliyuncs.com"
 ACR_NAMESPACE="lemo_zls"
-ACR_IMAGE="lemo-service-recommender"
+ACR_IMAGE="lemo-service-recommender-consumer"
 ACR_TAG="$(date +%Y-%m-%d-%H-%M-%S)"
 ACR_USERNAME="北京乐莫科技"
 ACR_PASSWORD="Andrew1870361"

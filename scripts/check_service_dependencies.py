@@ -110,7 +110,8 @@ def check_celery_libraries():
         
         try:
             import redbeat
-            print(f"✅ celery-redbeat 已安装: {redbeat.__version__}")
+            # redbeat 可能没有 __version__ 属性，只检查能否导入
+            print("✅ celery-redbeat 已安装")
         except ImportError:
             print("⚠️  celery-redbeat 未安装（Beat 服务推荐）: pip install celery-redbeat")
         
