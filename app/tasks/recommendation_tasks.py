@@ -222,30 +222,30 @@ def cleanup_expired_cache():
         while True:
             try:
                 # SCAN遍历匹配的key
-                cursor, keys = await redis.scan(cursor, match=pattern, count=100)
+                cursor, keys = redis.scan(cursor, match=pattern, count=100)
                 
                 for key in keys:
                     if isinstance(key, bytes):
                         key = key.decode('utf-8')
                     
                     # 检查TTL
-                    ttl = await redis.ttl(key)
+                    ttl = redis.ttl(key)
                     
                     if ttl == -1:
                         # 没有设置过期时间，设置默认过期时间
                         if "precomputed" in key or "result" in key:
-                            await redis.expire(key, 3600 * 4)  # 4小时
+                            redis.expire(key, 3600 * 4)  # 4小时
                         elif "profile" in key:
-                            await redis.expire(key, 3600 * 24)  # 24小时
+                            redis.expire(key, 3600 * 24)  # 24小时
                         elif "hot" in key:
-                            await redis.expire(key, 3600)  # 1小时
+                            redis.expire(key, 3600)  # 1小时
                         elif "config" in key:
-                            await redis.expire(key, 3600 * 12)  # 12小时
+                            redis.expire(key, 3600 * 12)  # 12小时
                         pattern_count += 1
                     
                     elif ttl == -2:
                         # Key已过期但未被删除
-                        await redis.delete(key)
+                        redis.delete(key)
                         pattern_count += 1
                 
                 if cursor == 0:
