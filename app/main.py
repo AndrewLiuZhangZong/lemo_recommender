@@ -80,7 +80,7 @@ def create_app() -> FastAPI:
     from app.api.v1 import (
         scenario, item, interaction, recommendation, admin, 
         experiment, jobs, model_training, recall_config, 
-        model_management, feature_config, behavior
+        model_management, feature_config, behavior, scenario_tracking
     )
     
     app.include_router(
@@ -154,6 +154,13 @@ def create_app() -> FastAPI:
         feature_config.router,
         prefix=f"{settings.api_prefix}/feature-config",
         tags=["实时特征配置"]
+    )
+    
+    # ⭐ v2.0架构：场景埋点配置管理
+    app.include_router(
+        scenario_tracking.router,
+        prefix=f"{settings.api_prefix}",  # scenario_tracking router已包含/tracking-configs前缀
+        tags=["场景埋点配置"]
     )
     
     @app.get("/")

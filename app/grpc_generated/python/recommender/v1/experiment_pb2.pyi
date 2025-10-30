@@ -17,74 +17,111 @@ class ExperimentStatus(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     EXPERIMENT_STATUS_PAUSED: _ClassVar[ExperimentStatus]
     EXPERIMENT_STATUS_STOPPED: _ClassVar[ExperimentStatus]
     EXPERIMENT_STATUS_COMPLETED: _ClassVar[ExperimentStatus]
+
+class TrafficSplitMethod(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    TRAFFIC_SPLIT_METHOD_UNSPECIFIED: _ClassVar[TrafficSplitMethod]
+    TRAFFIC_SPLIT_METHOD_USER_ID_HASH: _ClassVar[TrafficSplitMethod]
+    TRAFFIC_SPLIT_METHOD_RANDOM: _ClassVar[TrafficSplitMethod]
+    TRAFFIC_SPLIT_METHOD_WEIGHTED: _ClassVar[TrafficSplitMethod]
 EXPERIMENT_STATUS_UNSPECIFIED: ExperimentStatus
 EXPERIMENT_STATUS_DRAFT: ExperimentStatus
 EXPERIMENT_STATUS_RUNNING: ExperimentStatus
 EXPERIMENT_STATUS_PAUSED: ExperimentStatus
 EXPERIMENT_STATUS_STOPPED: ExperimentStatus
 EXPERIMENT_STATUS_COMPLETED: ExperimentStatus
+TRAFFIC_SPLIT_METHOD_UNSPECIFIED: TrafficSplitMethod
+TRAFFIC_SPLIT_METHOD_USER_ID_HASH: TrafficSplitMethod
+TRAFFIC_SPLIT_METHOD_RANDOM: TrafficSplitMethod
+TRAFFIC_SPLIT_METHOD_WEIGHTED: TrafficSplitMethod
 
 class Experiment(_message.Message):
-    __slots__ = ("id", "tenant_id", "scenario_id", "experiment_id", "name", "description", "groups", "status", "start_time", "end_time", "created_at", "updated_at")
+    __slots__ = ("id", "tenant_id", "scenario_id", "experiment_id", "name", "description", "hypothesis", "groups", "status", "traffic_split_method", "min_sample_size", "confidence_level", "start_time", "end_time", "created_at", "updated_at", "created_by")
     ID_FIELD_NUMBER: _ClassVar[int]
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     SCENARIO_ID_FIELD_NUMBER: _ClassVar[int]
     EXPERIMENT_ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
+    HYPOTHESIS_FIELD_NUMBER: _ClassVar[int]
     GROUPS_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
+    TRAFFIC_SPLIT_METHOD_FIELD_NUMBER: _ClassVar[int]
+    MIN_SAMPLE_SIZE_FIELD_NUMBER: _ClassVar[int]
+    CONFIDENCE_LEVEL_FIELD_NUMBER: _ClassVar[int]
     START_TIME_FIELD_NUMBER: _ClassVar[int]
     END_TIME_FIELD_NUMBER: _ClassVar[int]
     CREATED_AT_FIELD_NUMBER: _ClassVar[int]
     UPDATED_AT_FIELD_NUMBER: _ClassVar[int]
+    CREATED_BY_FIELD_NUMBER: _ClassVar[int]
     id: str
     tenant_id: str
     scenario_id: str
     experiment_id: str
     name: str
     description: str
+    hypothesis: str
     groups: _containers.RepeatedCompositeFieldContainer[ExperimentGroup]
     status: ExperimentStatus
+    traffic_split_method: TrafficSplitMethod
+    min_sample_size: int
+    confidence_level: float
     start_time: _timestamp_pb2.Timestamp
     end_time: _timestamp_pb2.Timestamp
     created_at: _timestamp_pb2.Timestamp
     updated_at: _timestamp_pb2.Timestamp
-    def __init__(self, id: _Optional[str] = ..., tenant_id: _Optional[str] = ..., scenario_id: _Optional[str] = ..., experiment_id: _Optional[str] = ..., name: _Optional[str] = ..., description: _Optional[str] = ..., groups: _Optional[_Iterable[_Union[ExperimentGroup, _Mapping]]] = ..., status: _Optional[_Union[ExperimentStatus, str]] = ..., start_time: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., end_time: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., created_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., updated_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+    created_by: str
+    def __init__(self, id: _Optional[str] = ..., tenant_id: _Optional[str] = ..., scenario_id: _Optional[str] = ..., experiment_id: _Optional[str] = ..., name: _Optional[str] = ..., description: _Optional[str] = ..., hypothesis: _Optional[str] = ..., groups: _Optional[_Iterable[_Union[ExperimentGroup, _Mapping]]] = ..., status: _Optional[_Union[ExperimentStatus, str]] = ..., traffic_split_method: _Optional[_Union[TrafficSplitMethod, str]] = ..., min_sample_size: _Optional[int] = ..., confidence_level: _Optional[float] = ..., start_time: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., end_time: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., created_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., updated_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., created_by: _Optional[str] = ...) -> None: ...
+
+class ExperimentStrategyConfig(_message.Message):
+    __slots__ = ("recall_model_ids", "rank_model_id", "rerank_rule_ids", "additional_config")
+    RECALL_MODEL_IDS_FIELD_NUMBER: _ClassVar[int]
+    RANK_MODEL_ID_FIELD_NUMBER: _ClassVar[int]
+    RERANK_RULE_IDS_FIELD_NUMBER: _ClassVar[int]
+    ADDITIONAL_CONFIG_FIELD_NUMBER: _ClassVar[int]
+    recall_model_ids: _containers.RepeatedScalarFieldContainer[str]
+    rank_model_id: str
+    rerank_rule_ids: _containers.RepeatedScalarFieldContainer[str]
+    additional_config: _struct_pb2.Struct
+    def __init__(self, recall_model_ids: _Optional[_Iterable[str]] = ..., rank_model_id: _Optional[str] = ..., rerank_rule_ids: _Optional[_Iterable[str]] = ..., additional_config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
 
 class ExperimentGroup(_message.Message):
-    __slots__ = ("group_id", "name", "traffic_ratio", "config", "is_control")
+    __slots__ = ("group_id", "name", "traffic_ratio", "strategy", "is_control")
     GROUP_ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     TRAFFIC_RATIO_FIELD_NUMBER: _ClassVar[int]
-    CONFIG_FIELD_NUMBER: _ClassVar[int]
+    STRATEGY_FIELD_NUMBER: _ClassVar[int]
     IS_CONTROL_FIELD_NUMBER: _ClassVar[int]
     group_id: str
     name: str
     traffic_ratio: float
-    config: _struct_pb2.Struct
+    strategy: ExperimentStrategyConfig
     is_control: bool
-    def __init__(self, group_id: _Optional[str] = ..., name: _Optional[str] = ..., traffic_ratio: _Optional[float] = ..., config: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., is_control: bool = ...) -> None: ...
+    def __init__(self, group_id: _Optional[str] = ..., name: _Optional[str] = ..., traffic_ratio: _Optional[float] = ..., strategy: _Optional[_Union[ExperimentStrategyConfig, _Mapping]] = ..., is_control: bool = ...) -> None: ...
 
 class CreateExperimentRequest(_message.Message):
-    __slots__ = ("tenant_id", "scenario_id", "experiment_id", "name", "description", "groups", "start_time", "end_time")
+    __slots__ = ("tenant_id", "scenario_id", "name", "description", "hypothesis", "groups", "traffic_split_method", "min_sample_size", "confidence_level", "created_by")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     SCENARIO_ID_FIELD_NUMBER: _ClassVar[int]
-    EXPERIMENT_ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
+    HYPOTHESIS_FIELD_NUMBER: _ClassVar[int]
     GROUPS_FIELD_NUMBER: _ClassVar[int]
-    START_TIME_FIELD_NUMBER: _ClassVar[int]
-    END_TIME_FIELD_NUMBER: _ClassVar[int]
+    TRAFFIC_SPLIT_METHOD_FIELD_NUMBER: _ClassVar[int]
+    MIN_SAMPLE_SIZE_FIELD_NUMBER: _ClassVar[int]
+    CONFIDENCE_LEVEL_FIELD_NUMBER: _ClassVar[int]
+    CREATED_BY_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     scenario_id: str
-    experiment_id: str
     name: str
     description: str
+    hypothesis: str
     groups: _containers.RepeatedCompositeFieldContainer[ExperimentGroup]
-    start_time: _timestamp_pb2.Timestamp
-    end_time: _timestamp_pb2.Timestamp
-    def __init__(self, tenant_id: _Optional[str] = ..., scenario_id: _Optional[str] = ..., experiment_id: _Optional[str] = ..., name: _Optional[str] = ..., description: _Optional[str] = ..., groups: _Optional[_Iterable[_Union[ExperimentGroup, _Mapping]]] = ..., start_time: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., end_time: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+    traffic_split_method: TrafficSplitMethod
+    min_sample_size: int
+    confidence_level: float
+    created_by: str
+    def __init__(self, tenant_id: _Optional[str] = ..., scenario_id: _Optional[str] = ..., name: _Optional[str] = ..., description: _Optional[str] = ..., hypothesis: _Optional[str] = ..., groups: _Optional[_Iterable[_Union[ExperimentGroup, _Mapping]]] = ..., traffic_split_method: _Optional[_Union[TrafficSplitMethod, str]] = ..., min_sample_size: _Optional[int] = ..., confidence_level: _Optional[float] = ..., created_by: _Optional[str] = ...) -> None: ...
 
 class CreateExperimentResponse(_message.Message):
     __slots__ = ("experiment",)
@@ -129,20 +166,24 @@ class ListExperimentsResponse(_message.Message):
     def __init__(self, experiments: _Optional[_Iterable[_Union[Experiment, _Mapping]]] = ..., page_info: _Optional[_Union[_pagination_pb2.PageInfo, _Mapping]] = ...) -> None: ...
 
 class UpdateExperimentRequest(_message.Message):
-    __slots__ = ("tenant_id", "scenario_id", "experiment_id", "name", "description", "groups")
+    __slots__ = ("tenant_id", "scenario_id", "experiment_id", "name", "description", "hypothesis", "min_sample_size", "confidence_level")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     SCENARIO_ID_FIELD_NUMBER: _ClassVar[int]
     EXPERIMENT_ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
-    GROUPS_FIELD_NUMBER: _ClassVar[int]
+    HYPOTHESIS_FIELD_NUMBER: _ClassVar[int]
+    MIN_SAMPLE_SIZE_FIELD_NUMBER: _ClassVar[int]
+    CONFIDENCE_LEVEL_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     scenario_id: str
     experiment_id: str
     name: str
     description: str
-    groups: _containers.RepeatedCompositeFieldContainer[ExperimentGroup]
-    def __init__(self, tenant_id: _Optional[str] = ..., scenario_id: _Optional[str] = ..., experiment_id: _Optional[str] = ..., name: _Optional[str] = ..., description: _Optional[str] = ..., groups: _Optional[_Iterable[_Union[ExperimentGroup, _Mapping]]] = ...) -> None: ...
+    hypothesis: str
+    min_sample_size: int
+    confidence_level: float
+    def __init__(self, tenant_id: _Optional[str] = ..., scenario_id: _Optional[str] = ..., experiment_id: _Optional[str] = ..., name: _Optional[str] = ..., description: _Optional[str] = ..., hypothesis: _Optional[str] = ..., min_sample_size: _Optional[int] = ..., confidence_level: _Optional[float] = ...) -> None: ...
 
 class UpdateExperimentResponse(_message.Message):
     __slots__ = ("experiment",)

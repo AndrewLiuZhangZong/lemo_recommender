@@ -65,6 +65,18 @@ async def get_mongodb() -> AsyncIOMotorDatabase:
     return _get_mongodb()
 
 
+async def get_tracking_service():
+    """
+    获取ScenarioTrackingService实例
+    
+    用于场景埋点配置管理
+    """
+    from app.services.scenario_tracking import ScenarioTrackingService
+    
+    db = await get_mongodb()
+    return ScenarioTrackingService(db=db)
+
+
 async def get_behavior_service():
     """
     获取BehaviorService实例
@@ -72,6 +84,7 @@ async def get_behavior_service():
     v2.0架构：
     - 不依赖MongoDB（行为数据直接到Kafka）
     - 依赖Kafka Producer（可选，未配置时降级）
+    - 支持场景数据验证（可选，依赖tracking_service）
     """
     from app.services.behavior import BehaviorService
     from app.core.kafka import get_kafka_producer
@@ -79,5 +92,14 @@ async def get_behavior_service():
     # 获取Kafka Producer（可能为None）
     kafka_producer = get_kafka_producer()
     
-    return BehaviorService(kafka_producer=kafka_producer)
+    # 获取TrackingService（可选，用于场景数据验证）
+    try:
+        tracking_service = await get_tracking_service()
+    except:
+        tracking_service = None
+    
+    return BehaviorService(
+        kafka_producer=kafka_producer,
+        tracking_service=tracking_service
+    )
 
