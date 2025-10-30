@@ -21,7 +21,14 @@ class KafkaProducer:
                 value_serializer=lambda v: json.dumps(v, ensure_ascii=False, default=str).encode('utf-8'),
                 key_serializer=lambda k: k.encode('utf-8') if k else None,
                 acks='all',  # 等待所有副本确认
-                compression_type='gzip'
+                compression_type='gzip',
+                # 连接和请求超时配置
+                request_timeout_ms=30000,  # 请求超时 30秒
+                metadata_max_age_ms=60000,  # 元数据最大存活时间 60秒
+                # 连接配置
+                connections_max_idle_ms=540000,  # 连接最大空闲时间 9分钟
+                # API 版本自动检测超时
+                api_version_auto_timeout_ms=10000  # API 版本检测超时 10秒
             )
         except ImportError:
             print("[Kafka] aiokafka未安装，使用模拟模式")
@@ -31,11 +38,14 @@ class KafkaProducer:
         """启动生产者"""
         if self.producer and not self._started:
             try:
+                print(f"[Kafka] 正在连接 Kafka: {self.bootstrap_servers}")
                 await self.producer.start()
                 self._started = True
-                print(f"[Kafka] Producer已启动: {self.bootstrap_servers}")
+                print(f"✅ Kafka Producer已启动: {self.bootstrap_servers}")
             except Exception as e:
-                print(f"[Kafka] Producer启动失败: {e}")
+                print(f"⚠️  Kafka Producer启动失败: {type(e).__name__}: {e}")
+                print(f"⚠️  Kafka 服务器: {self.bootstrap_servers}")
+                print(f"⚠️  系统将以无 Kafka 模式运行（仅记录日志）")
                 self.producer = None
     
     async def stop(self):
