@@ -25,10 +25,7 @@ class KafkaProducer:
                 # 连接和请求超时配置
                 request_timeout_ms=30000,  # 请求超时 30秒
                 metadata_max_age_ms=60000,  # 元数据最大存活时间 60秒
-                # 连接配置
-                connections_max_idle_ms=540000,  # 连接最大空闲时间 9分钟
-                # API 版本自动检测超时
-                api_version_auto_timeout_ms=10000  # API 版本检测超时 10秒
+                connections_max_idle_ms=540000  # 连接最大空闲时间 9分钟
             )
         except ImportError:
             print("[Kafka] aiokafka未安装，使用模拟模式")
