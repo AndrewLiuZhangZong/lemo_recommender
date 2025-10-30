@@ -8,7 +8,7 @@ metadata:
     component: worker
     environment: dev
 spec:
-  replicas: 2
+  replicas: 1  # 降低副本数以节省资源
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -50,11 +50,11 @@ spec:
             name: lemo-service-recommender-config
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "2Gi"
-            cpu: "2000m"
+            memory: "1Gi"
+            cpu: "1000m"
         livenessProbe:
           exec:
             command:
