@@ -56,7 +56,11 @@ class ExperimentService:
         status: Optional[ExperimentStatus] = None
     ) -> List[Experiment]:
         """列出实验"""
-        query = {"tenant_id": tenant_id}
+        query = {}
+        
+        # tenant_id为空时查询所有租户，否则只查询指定租户
+        if tenant_id:
+            query["tenant_id"] = tenant_id
         
         if scenario_id:
             query["scenario_id"] = scenario_id
