@@ -14,14 +14,24 @@ from app.core.database import mongodb, redis_client
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时
+    print("=" * 70)
     print("🚀 启动推荐系统...")
+    print("=" * 70)
     print(f"📝 配置信息:")
+    print(f"   环境: {settings.env}")
+    print(f"   应用: {settings.app_name} v{settings.app_version}")
     print(f"   MongoDB URL: {settings.mongodb_url}")
     print(f"   MongoDB DB: {settings.mongodb_database}")
     print(f"   Redis URL: {settings.redis_url}")
-    print(f"   Kafka: {settings.kafka_bootstrap_servers}")
+    print(f"   Kafka Bootstrap: {settings.kafka_bootstrap_servers}")
+    print(f"   Kafka Topics (Item Ingest): {settings.kafka_item_ingest_topics}")
+    print(f"   Milvus: {settings.milvus_host}:{settings.milvus_port}")
+    print(f"   Celery Broker: {settings.celery_broker_url}")
+    print(f"   Celery Backend: {settings.celery_result_backend}")
+    print("=" * 70)
     
     # 初始化数据库连接
+    print("🔌 连接外部服务...")
     await mongodb.connect()
     await redis_client.connect()
     
@@ -37,10 +47,16 @@ async def lifespan(app: FastAPI):
     else:
         print("⚠️  Kafka未配置，behavior服务将以降级模式运行")
     
+    print("=" * 70)
+    print("✅ 推荐系统启动完成！")
+    print("=" * 70)
+    
     yield
     
     # 关闭时
+    print("=" * 70)
     print("👋 关闭推荐系统...")
+    print("=" * 70)
     
     # 关闭Kafka Producer
     from app.core.kafka import shutdown_kafka
@@ -52,6 +68,10 @@ async def lifespan(app: FastAPI):
     
     await mongodb.close()
     await redis_client.close()
+    
+    print("=" * 70)
+    print("✅ 推荐系统已关闭")
+    print("=" * 70)
 
 
 def create_app() -> FastAPI:
