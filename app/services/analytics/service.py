@@ -57,25 +57,26 @@ class AnalyticsService:
                 {**experiment_query, "status": "running"}
             )
             
-            # 生产环境应从事件日志统计，这里返回模拟数据
+            # 注意：推荐相关指标需要接入事件追踪系统才能获取真实数据
+            # 当前只返回配置数据的真实统计（物品数、场景数、实验数）
             dashboard_data = {
                 "overview": {
-                    "total_recommendations": 1285430,  # 总推荐次数（应从事件日志统计）
-                    "ctr": 18.6,  # 点击率（应从事件日志统计）
-                    "conversion_rate": 5.8,  # 转化率（应从事件日志统计）
-                    "active_users": 52380,  # 活跃用户（应从事件日志统计）
-                    "total_items": total_items,  # 物品池大小
-                    "active_scenarios": active_scenarios,  # 活跃场景数
-                    "running_experiments": running_experiments,  # 运行中的实验数
+                    "total_recommendations": 0,  # 需要事件日志系统
+                    "ctr": 0.0,  # 需要事件日志系统
+                    "conversion_rate": 0.0,  # 需要事件日志系统
+                    "active_users": 0,  # 需要事件日志系统
+                    "total_items": total_items,  # ✅ 真实数据：从items collection统计
+                    "active_scenarios": active_scenarios,  # ✅ 真实数据：从scenarios collection统计
+                    "running_experiments": running_experiments,  # ✅ 真实数据：从experiments collection统计
                 },
                 "trend": {
-                    "recommendations_growth": 12.5,  # 推荐增长率（较上周）
-                    "ctr_growth": 2.3,  # CTR增长率
-                    "conversion_growth": -0.5,  # 转化率变化
-                    "users_growth": 8.2,  # 用户增长率
+                    "recommendations_growth": 0.0,
+                    "ctr_growth": 0.0,
+                    "conversion_growth": 0.0,
+                    "users_growth": 0.0,
                 },
-                "data_source": "simulated",  # 标记为模拟数据
-                "message": "当前数据为模拟数据，生产环境需接入实时事件追踪系统"
+                "data_source": "partial",  # 部分数据
+                "message": "推荐指标需要接入事件追踪系统（如Kafka+ClickHouse），当前仅显示配置数据统计"
             }
             
             logger.info(f"获取仪表板数据成功 - tenant: {tenant_id}, items: {total_items}")
@@ -100,36 +101,37 @@ class AnalyticsService:
         生产环境应从时序数据库获取（如ClickHouse、TimescaleDB）
         """
         try:
-            # 模拟24小时的趋势数据
+            # 时间点（最近24小时，每4小时一个点）
             time_points = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00']
             
-            # 模拟数据：实际应从事件日志按时间聚合
+            # 返回空数据，等待接入真实事件追踪系统
             trend_data = {
                 "time_points": time_points,
                 "metrics": {
-                    "impressions": {  # 曝光数
+                    "impressions": {
                         "label": "推荐曝光",
-                        "data": [12000, 8000, 15000, 28000, 32000, 28000, 18000],
+                        "data": [0, 0, 0, 0, 0, 0, 0],  # 空数据
                         "unit": "次"
                     },
-                    "clicks": {  # 点击数
+                    "clicks": {
                         "label": "推荐点击",
-                        "data": [2200, 1500, 2800, 5200, 6000, 5200, 3400],
+                        "data": [0, 0, 0, 0, 0, 0, 0],  # 空数据
                         "unit": "次"
                     },
-                    "ctr": {  # 点击率
+                    "ctr": {
                         "label": "点击率",
-                        "data": [18.3, 18.8, 18.7, 18.6, 18.8, 18.6, 18.9],
+                        "data": [0, 0, 0, 0, 0, 0, 0],  # 空数据
                         "unit": "%"
                     },
-                    "conversions": {  # 转化数
+                    "conversions": {
                         "label": "转化数",
-                        "data": [680, 450, 840, 1560, 1800, 1560, 1020],
+                        "data": [0, 0, 0, 0, 0, 0, 0],  # 空数据
                         "unit": "次"
                     }
                 },
                 "granularity": granularity,
-                "data_source": "simulated"
+                "data_source": "empty",  # 标记为空数据
+                "message": "需要接入事件追踪系统获取真实推荐数据"
             }
             
             # 只返回请求的指标
@@ -252,35 +254,36 @@ class AnalyticsService:
         生产环境应从用户行为日志分析（如通过Flink实时计算）
         """
         try:
-            # 模拟用户行为数据
+            # 返回空数据，等待接入用户行为追踪系统
             behavior_data = {
                 "user_metrics": {
-                    "total_users": 52380,  # 总用户数
-                    "active_users": 38650,  # 活跃用户数
-                    "new_users": 4280,  # 新用户数
-                    "returning_users": 34370,  # 回访用户数
+                    "total_users": 0,
+                    "active_users": 0,
+                    "new_users": 0,
+                    "returning_users": 0,
                 },
                 "engagement": {
-                    "avg_session_duration": 285,  # 平均会话时长（秒）
-                    "avg_page_views": 12.5,  # 平均页面浏览数
-                    "bounce_rate": 32.8,  # 跳出率（%）
-                    "avg_recommendations_per_session": 8.3,  # 平均每次会话推荐数
+                    "avg_session_duration": 0,
+                    "avg_page_views": 0.0,
+                    "bounce_rate": 0.0,
+                    "avg_recommendations_per_session": 0.0,
                 },
                 "conversion_funnel": [
-                    {"stage": "曝光", "users": 52380, "rate": 100.0},
-                    {"stage": "点击", "users": 9743, "rate": 18.6},
-                    {"stage": "查看详情", "users": 6820, "rate": 13.0},
-                    {"stage": "加购", "users": 4186, "rate": 8.0},
-                    {"stage": "下单", "users": 3038, "rate": 5.8},
+                    {"stage": "曝光", "users": 0, "rate": 0.0},
+                    {"stage": "点击", "users": 0, "rate": 0.0},
+                    {"stage": "查看详情", "users": 0, "rate": 0.0},
+                    {"stage": "加购", "users": 0, "rate": 0.0},
+                    {"stage": "下单", "users": 0, "rate": 0.0},
                 ],
                 "top_behaviors": [
-                    {"action": "浏览推荐", "count": 145680, "percentage": 45.2},
-                    {"action": "点击推荐", "count": 87400, "percentage": 27.1},
-                    {"action": "搜索", "count": 52340, "percentage": 16.2},
-                    {"action": "收藏", "count": 23450, "percentage": 7.3},
-                    {"action": "分享", "count": 13580, "percentage": 4.2},
+                    {"action": "浏览推荐", "count": 0, "percentage": 0.0},
+                    {"action": "点击推荐", "count": 0, "percentage": 0.0},
+                    {"action": "搜索", "count": 0, "percentage": 0.0},
+                    {"action": "收藏", "count": 0, "percentage": 0.0},
+                    {"action": "分享", "count": 0, "percentage": 0.0},
                 ],
-                "data_source": "simulated"
+                "data_source": "empty",
+                "message": "需要接入用户行为追踪系统获取真实数据"
             }
             
             return behavior_data
