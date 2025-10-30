@@ -86,9 +86,8 @@ async def serve(host: str = "0.0.0.0", port: int = 50051):
         ]
     )
     
-    logger.info("=" * 70)
     # 注册服务
-    logger.info("📋 注册 gRPC 服务...")
+    logger.info("注册 gRPC 服务...")
     
     scenario_pb2_grpc.add_ScenarioServiceServicer_to_server(
         ScenarioServicer(db), server
@@ -159,8 +158,6 @@ async def serve(host: str = "0.0.0.0", port: int = 50051):
         await server.stop(grace=5)
         await mongodb.disconnect()
         logger.info("✅ gRPC 服务器已关闭")
-
-
 def main():
     """主函数"""
     import os
