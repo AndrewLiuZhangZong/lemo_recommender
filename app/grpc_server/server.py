@@ -32,8 +32,10 @@ from .services import (
     BehaviorServicer,
 )
 
-# 导入数据库
-from app.core.database import mongodb
+# 导入数据库和配置
+from app.core.database import mongodb, redis_client
+from app.core.config import settings
+from app.core.kafka import init_kafka_producer, startup_kafka
 
 # 配置日志
 logging.basicConfig(
@@ -46,11 +48,34 @@ logger = logging.getLogger(__name__)
 async def serve(host: str = "0.0.0.0", port: int = 50051):
     """启动 gRPC 服务器"""
     
+    logger.info("=" * 70)
+    logger.info("🚀 启动 gRPC 服务器...")
+    logger.info("=" * 70)
+    logger.info("📝 配置信息:")
+    logger.info(f"   应用: {settings.app_name} v{settings.app_version}")
+    logger.info(f"   MongoDB: {settings.mongodb_url}")
+    logger.info(f"   Redis: {settings.redis_url}")
+    logger.info(f"   Kafka: {settings.kafka_bootstrap_servers}")
+    logger.info(f"   gRPC 地址: {host}:{port}")
+    logger.info("=" * 70)
+    
     # 初始化数据库连接
-    logger.info("初始化数据库连接...")
+    logger.info("🔌 连接外部服务...")
     await mongodb.connect()
     db = mongodb.get_database()
-    logger.info("  ✓ 数据库连接成功")
+    logger.info("  ✓ MongoDB 连接成功")
+    
+    # 初始化 Redis 连接
+    await redis_client.connect()
+    
+    # 初始化 Kafka Producer
+    if settings.kafka_bootstrap_servers:
+        try:
+            init_kafka_producer(settings.kafka_bootstrap_servers)
+            await startup_kafka()
+            logger.info("  ✓ Kafka Producer 已启动")
+        except Exception as e:
+            logger.warning(f"  ⚠️  Kafka Producer 启动失败（降级模式）: {e}")
     
     # 创建服务器
     server = grpc.aio.server(
@@ -61,8 +86,9 @@ async def serve(host: str = "0.0.0.0", port: int = 50051):
         ]
     )
     
+    logger.info("=" * 70)
     # 注册服务
-    logger.info("注册 gRPC 服务...")
+    logger.info("📋 注册 gRPC 服务...")
     
     scenario_pb2_grpc.add_ScenarioServiceServicer_to_server(
         ScenarioServicer(db), server
