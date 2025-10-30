@@ -20,7 +20,6 @@ pymongo = "^4.6.1"
 redis = {extras = ["hiredis"], version = "^5.0.1"}
 
 # 消息队列与流处理
-kafka-python = "^2.0.2"  # 同步 Kafka客户端（用于 Celery 等）
 aiokafka = "^0.12.0"  # 异步 Kafka 客户端（用于 Consumer 服务，最新版本 2024-10-26）
 # apache-flink = "^1.17.0"  # Flink Python API (独立部署,不需要在API服务中)
 

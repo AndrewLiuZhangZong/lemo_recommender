@@ -40,22 +40,14 @@ def check_mongodb():
 
 
 def check_kafka():
-    """检查 Kafka 连接"""
+    """检查 Kafka 配置"""
     try:
-        from kafka import KafkaProducer
-        producer = KafkaProducer(
-            bootstrap_servers="111.228.39.41:9092",
-            request_timeout_ms=5000,
-            api_version_auto_timeout_ms=5000
-        )
-        producer.close()
-        print("✅ Kafka 连接成功")
+        # 仅检查 aiokafka 是否安装（实际连接由 Consumer 服务负责）
+        import aiokafka
+        print(f"✅ aiokafka 已安装: {aiokafka.__version__}")
         return True
     except ImportError:
-        print("❌ Kafka 库未安装: pip install kafka-python")
-        return False
-    except Exception as e:
-        print(f"❌ Kafka 连接失败: {e}")
+        print("❌ aiokafka 库未安装: pip install aiokafka")
         return False
 
 

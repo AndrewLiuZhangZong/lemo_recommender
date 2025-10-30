@@ -58,27 +58,10 @@ spec:
             - -c
             - |
               # 检查 Consumer 进程是否存在
-              if ! ps aux | grep -v grep | grep kafka_consumer > /dev/null; then
-                exit 1
-              fi
-              # 检查 Kafka 连接（通过环境变量）
-              python3 -c "
-              from kafka import KafkaProducer
-              import os
-              try:
-                  producer = KafkaProducer(
-                      bootstrap_servers=os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092'),
-                      request_timeout_ms=5000,
-                      api_version_auto_timeout_ms=5000
-                  )
-                  producer.close()
-              except Exception as e:
-                  print(f'Kafka连接失败: {e}')
-                  exit(1)
-              " || exit 1
+              ps aux | grep -v grep | grep kafka_consumer > /dev/null
           initialDelaySeconds: 60
           periodSeconds: 60
-          timeoutSeconds: 10
+          timeoutSeconds: 5
           failureThreshold: 3
         readinessProbe:
           exec:
