@@ -20,11 +20,36 @@ async def lifespan(app: FastAPI):
     print(f"   MongoDB DB: {settings.mongodb_database}")
     print(f"   Redis URL: {settings.redis_url}")
     print(f"   Kafka: {settings.kafka_bootstrap_servers}")
+    
+    # 初始化数据库连接
     await mongodb.connect()
     await redis_client.connect()
+    
+    # 初始化Kafka Producer（v2.0架构 - behavior服务需要）
+    from app.core.kafka import init_kafka_producer, startup_kafka
+    if settings.kafka_bootstrap_servers:
+        try:
+            init_kafka_producer(settings.kafka_bootstrap_servers)
+            await startup_kafka()
+            print("✅ Kafka Producer已启动")
+        except Exception as e:
+            print(f"⚠️  Kafka Producer启动失败（降级模式）: {e}")
+    else:
+        print("⚠️  Kafka未配置，behavior服务将以降级模式运行")
+    
     yield
+    
     # 关闭时
     print("👋 关闭推荐系统...")
+    
+    # 关闭Kafka Producer
+    from app.core.kafka import shutdown_kafka
+    try:
+        await shutdown_kafka()
+        print("✅ Kafka Producer已关闭")
+    except Exception as e:
+        print(f"⚠️  Kafka Producer关闭失败: {e}")
+    
     await mongodb.close()
     await redis_client.close()
 
@@ -52,7 +77,11 @@ def create_app() -> FastAPI:
     )
     
     # 注册路由
-    from app.api.v1 import scenario, item, interaction, recommendation, admin, experiment, jobs, model_training, recall_config, model_management, feature_config
+    from app.api.v1 import (
+        scenario, item, interaction, recommendation, admin, 
+        experiment, jobs, model_training, recall_config, 
+        model_management, feature_config, behavior
+    )
     
     app.include_router(
         scenario.router,
@@ -69,7 +98,14 @@ def create_app() -> FastAPI:
     app.include_router(
         interaction.router,
         prefix=f"{settings.api_prefix}/interactions",
-        tags=["行为采集"]
+        tags=["行为采集（旧版）"]
+    )
+    
+    # ⭐ v2.0架构：新的行为采集服务
+    app.include_router(
+        behavior.router,
+        prefix=f"{settings.api_prefix}",  # behavior router已包含/behaviors前缀
+        tags=["行为采集v2"]
     )
     
     app.include_router(

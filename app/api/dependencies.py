@@ -64,3 +64,20 @@ async def get_mongodb() -> AsyncIOMotorDatabase:
     from app.core.database import get_mongodb as _get_mongodb
     return _get_mongodb()
 
+
+async def get_behavior_service():
+    """
+    获取BehaviorService实例
+    
+    v2.0架构：
+    - 不依赖MongoDB（行为数据直接到Kafka）
+    - 依赖Kafka Producer（可选，未配置时降级）
+    """
+    from app.services.behavior import BehaviorService
+    from app.core.kafka import get_kafka_producer
+    
+    # 获取Kafka Producer（可能为None）
+    kafka_producer = get_kafka_producer()
+    
+    return BehaviorService(kafka_producer=kafka_producer)
+

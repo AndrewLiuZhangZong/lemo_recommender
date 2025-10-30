@@ -243,3 +243,52 @@ class KafkaMessages:
             "timestamp": (timestamp or datetime.utcnow()).isoformat()
         }
 
+
+# 全局Kafka Producer实例
+_kafka_producer: Optional[KafkaProducer] = None
+
+
+def get_kafka_producer() -> Optional[KafkaProducer]:
+    """
+    获取全局Kafka Producer实例
+    
+    Returns:
+        KafkaProducer实例，如果未初始化则返回None
+    """
+    global _kafka_producer
+    return _kafka_producer
+
+
+def init_kafka_producer(bootstrap_servers: str) -> KafkaProducer:
+    """
+    初始化全局Kafka Producer
+    
+    Args:
+        bootstrap_servers: Kafka服务器地址，如"localhost:9092"
+    
+    Returns:
+        KafkaProducer实例
+    """
+    global _kafka_producer
+    if _kafka_producer is None:
+        _kafka_producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
+    return _kafka_producer
+
+
+async def startup_kafka():
+    """
+    启动Kafka Producer（应在FastAPI启动时调用）
+    """
+    global _kafka_producer
+    if _kafka_producer:
+        await _kafka_producer.start()
+
+
+async def shutdown_kafka():
+    """
+    关闭Kafka Producer（应在FastAPI关闭时调用）
+    """
+    global _kafka_producer
+    if _kafka_producer:
+        await _kafka_producer.stop()
+
