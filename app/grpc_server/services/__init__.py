@@ -6,6 +6,7 @@ from .analytics_service import AnalyticsServicer
 from .model_service import ModelServicer
 from .template_service import TemplateServicer
 from .dataset_service import DatasetServicer
+from .behavior_service import BehaviorServicer
 
 __all__ = [
     "ScenarioServicer",
@@ -15,5 +16,6 @@ __all__ = [
     "ModelServicer",
     "TemplateServicer",
     "DatasetServicer",
+    "BehaviorServicer",
 ]
 

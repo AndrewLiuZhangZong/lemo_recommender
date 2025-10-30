@@ -18,6 +18,7 @@ from recommender.v1 import (
     model_pb2_grpc,
     template_pb2_grpc,
     dataset_pb2_grpc,
+    behavior_pb2_grpc,
 )
 
 from .services import (
@@ -28,6 +29,7 @@ from .services import (
     ModelServicer,
     TemplateServicer,
     DatasetServicer,
+    BehaviorServicer,
 )
 
 # 导入数据库
@@ -97,6 +99,12 @@ async def serve(host: str = "0.0.0.0", port: int = 50051):
     )
     logger.info("  ✓ DatasetService")
     
+    # ⭐ v2.0架构：BehaviorService（不需要db，直接发送到Kafka）
+    behavior_pb2_grpc.add_BehaviorServiceServicer_to_server(
+        BehaviorServicer(), server
+    )
+    logger.info("  ✓ BehaviorService (v2.0 - Kafka)")
+    
     # 绑定端口
     listen_addr = f'{host}:{port}'
     server.add_insecure_port(listen_addr)
@@ -111,6 +119,7 @@ async def serve(host: str = "0.0.0.0", port: int = 50051):
     logger.info("  - lemo.recommender.v1.ModelService")
     logger.info("  - lemo.recommender.v1.TemplateService")
     logger.info("  - lemo.recommender.v1.DatasetService")
+    logger.info("  - lemo.recommender.v1.BehaviorService ⭐ v2.0")
     logger.info("="*60)
     
     # 启动服务器
