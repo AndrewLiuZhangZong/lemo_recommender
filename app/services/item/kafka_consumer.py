@@ -8,7 +8,7 @@ from datetime import datetime
 
 from app.core.kafka import KafkaConsumer, KafkaProducer, KafkaTopics
 from app.core.config import settings
-from app.core.database import get_mongodb_client
+from app.core.database import get_database
 from app.services.item.service import ItemService
 from app.services.item.processor import ItemProcessor
 
@@ -48,9 +48,8 @@ class ItemKafkaConsumerService:
             self.producer = KafkaProducer(settings.kafka_bootstrap_servers)
             await self.producer.start()
             
-            # 初始化MongoDB
-            mongo_client = get_mongodb_client()
-            self.db = mongo_client[settings.mongodb_database]
+            # 初始化MongoDB（同步版本用于 Consumer）
+            self.db = get_database()
             
             # 初始化处理器
             self.processor = ItemProcessor(self.producer)
