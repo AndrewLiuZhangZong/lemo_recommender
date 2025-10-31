@@ -33,10 +33,77 @@ class ItemKafkaConsumerService:
         
         print(f"[ItemKafkaConsumer] 初始化，监听Topics: {self.topics}")
     
+    async def ensure_topics_exist(self):
+        """确保所需的 Kafka Topics 存在，不存在则自动创建"""
+        try:
+            from aiokafka import AIOKafkaClient
+            from aiokafka.admin import AIOKafkaAdminClient, NewTopic
+            from aiokafka.errors import TopicAlreadyExistsError, KafkaError
+            
+            print(f"[ItemKafkaConsumer] 🔍 检查 Kafka Topics...")
+            
+            # 创建 Admin Client
+            admin_client = AIOKafkaAdminClient(
+                bootstrap_servers=settings.kafka_bootstrap_servers,
+                client_id='kafka-topic-checker'
+            )
+            
+            try:
+                await admin_client.start()
+                
+                # 获取现有 Topics
+                client = AIOKafkaClient(bootstrap_servers=settings.kafka_bootstrap_servers)
+                await client.bootstrap()
+                cluster = client.cluster
+                existing_topics = cluster.topics()
+                await client.close()
+                
+                # 检查哪些 Topics 需要创建
+                topics_to_create = []
+                for topic_name in self.topics:
+                    if topic_name not in existing_topics:
+                        topics_to_create.append(
+                            NewTopic(
+                                name=topic_name,
+                                num_partitions=3,
+                                replication_factor=1
+                            )
+                        )
+                        print(f"[ItemKafkaConsumer] 📝 Topic 不存在，准备创建: {topic_name}")
+                    else:
+                        print(f"[ItemKafkaConsumer] ✓ Topic 已存在: {topic_name}")
+                
+                # 创建缺失的 Topics
+                if topics_to_create:
+                    print(f"[ItemKafkaConsumer] 🚀 创建 {len(topics_to_create)} 个 Topics...")
+                    try:
+                        await admin_client.create_topics(topics_to_create, timeout_ms=10000)
+                        for topic in topics_to_create:
+                            print(f"[ItemKafkaConsumer] ✅ Topic 创建成功: {topic.name}")
+                    except TopicAlreadyExistsError:
+                        print(f"[ItemKafkaConsumer] ⚠️  某些 Topic 已存在（并发创建）")
+                    except Exception as e:
+                        print(f"[ItemKafkaConsumer] ⚠️  Topic 创建失败: {e}")
+                        print(f"[ItemKafkaConsumer] 将尝试继续启动（Topic 可能已存在或权限不足）")
+                else:
+                    print(f"[ItemKafkaConsumer] ✅ 所有 Topics 已就绪")
+                
+            finally:
+                await admin_client.close()
+                
+        except ImportError:
+            print(f"[ItemKafkaConsumer] ⚠️  aiokafka.admin 不可用，跳过 Topic 检查")
+        except Exception as e:
+            print(f"[ItemKafkaConsumer] ⚠️  Topic 检查失败: {e}")
+            print(f"[ItemKafkaConsumer] 将尝试继续启动...")
+    
     async def start(self):
         """启动消费者服务"""
         try:
-            # 初始化Kafka消费者
+            # 1. 确保 Topics 存在
+            await self.ensure_topics_exist()
+            
+            # 2. 初始化Kafka消费者
             self.consumer = KafkaConsumer(
                 topics=self.topics,
                 bootstrap_servers=settings.kafka_bootstrap_servers,
