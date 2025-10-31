@@ -104,45 +104,10 @@ class ScenarioConfig(BaseModel):
     )
     
     # 实时计算配置（用于 Flink 作业）
+    # ⚠️ 注意：配置必须完整，不能有默认值。所有配置必须从 MongoDB 读取。
     realtime_compute: Dict[str, Any] = Field(
         description="实时计算配置（Flink 作业使用）",
-        default_factory=lambda: {
-            # 物品热度计算
-            "hot_score": {
-                "enabled": True,
-                "action_weights": {
-                    "impression": 0.5,
-                    "view": 1.0,
-                    "click": 2.0,
-                    "like": 3.0,
-                    "favorite": 4.0,
-                    "comment": 5.0,
-                    "share": 6.0,
-                    "purchase": 10.0
-                },
-                "decay_lambda": 0.1,  # 时间衰减系数
-                "window_size_minutes": 60,  # 滑动窗口大小
-                "window_slide_minutes": 15  # 滑动步长
-            },
-            # 用户画像更新
-            "user_profile": {
-                "enabled": True,
-                "update_frequency_minutes": 5,
-                "interest_decay_days": 30,
-                "behavior_weights": {
-                    "view": 1.0,
-                    "like": 3.0,
-                    "favorite": 5.0,
-                    "purchase": 10.0
-                }
-            },
-            # 推荐指标计算
-            "metrics": {
-                "enabled": True,
-                "window_size_minutes": 30,
-                "metrics_to_calculate": ["ctr", "cvr", "watch_time"]
-            }
-        }
+        default_factory=dict  # 空字典，必须显式配置
     )
 
 

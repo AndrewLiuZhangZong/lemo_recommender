@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     # Kafka消费者Topic配置
     kafka_item_ingest_topics: List[str] = Field(default=["items-ingest", "vlog-items", "news-items"])
     
+    # Flink 集群配置
+    flink_rest_url: str = Field(default="http://localhost:8081", description="Flink REST API 地址")
+    flink_rest_timeout: int = Field(default=30, description="Flink REST API 超时时间（秒）")
+    
     # 外部服务配置
     tenant_service_grpc_url: str = Field(default="localhost:9000")
     user_service_grpc_url: str = Field(default="localhost:9001")

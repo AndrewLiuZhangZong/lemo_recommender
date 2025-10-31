@@ -100,7 +100,8 @@ def create_app() -> FastAPI:
     from app.api.v1 import (
         scenario, item, interaction, recommendation, admin, 
         experiment, jobs, model_training, recall_config, 
-        model_management, feature_config, behavior, scenario_tracking
+        model_management, feature_config, behavior, scenario_tracking,
+        flink_jobs
     )
     
     app.include_router(
@@ -181,6 +182,13 @@ def create_app() -> FastAPI:
         scenario_tracking.router,
         prefix=f"{settings.api_prefix}",  # scenario_tracking router已包含/tracking-configs前缀
         tags=["场景埋点配置"]
+    )
+    
+    # ⭐ Flink 作业管理 API（通过 REST API 管理作业，支持动态模板）
+    app.include_router(
+        flink_jobs.router,
+        prefix=f"{settings.api_prefix}",  # flink_jobs router已包含/flink-jobs前缀
+        tags=["Flink 作业管理"]
     )
     
     @app.get("/")

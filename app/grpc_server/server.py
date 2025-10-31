@@ -32,6 +32,14 @@ from .services import (
     BehaviorServicer,
 )
 
+# Flink 作业管理服务（条件导入，proto 生成后可用）
+try:
+    from recommender.v1 import flink_job_pb2_grpc
+    from .services.flink_job_service import FlinkJobServicer
+    FLINK_JOB_SERVICE_AVAILABLE = True
+except ImportError:
+    FLINK_JOB_SERVICE_AVAILABLE = False
+
 # 导入数据库和配置
 from app.core.database import mongodb, redis_client
 from app.core.config import settings
@@ -129,6 +137,15 @@ async def serve(host: str = "0.0.0.0", port: int = 50051):
         BehaviorServicer(), server
     )
     logger.info("  ✓ BehaviorService (v2.0 - Kafka)")
+    
+    # Flink 作业管理服务
+    if FLINK_JOB_SERVICE_AVAILABLE:
+        flink_job_pb2_grpc.add_FlinkJobServiceServicer_to_server(
+            FlinkJobServicer(), server
+        )
+        logger.info("  ✓ FlinkJobService")
+    else:
+        logger.warning("  ⚠️  FlinkJobService 不可用（proto 文件未生成）")
     
     # 绑定端口
     listen_addr = f'{host}:{port}'

@@ -113,22 +113,24 @@ class RealtimeConfigLoader:
             
         Returns:
             行为权重字典
+            
+        Raises:
+            ValueError: 如果配置不存在
         """
         hot_score_config = self.get_hot_score_config(tenant_id, scenario_id)
         
-        # 默认权重
-        default_weights = {
-            'impression': 0.5,
-            'view': 1.0,
-            'click': 2.0,
-            'like': 3.0,
-            'favorite': 4.0,
-            'comment': 5.0,
-            'share': 6.0,
-            'purchase': 10.0
-        }
+        # 检查配置是否存在
+        if not hot_score_config:
+            raise ValueError(f"场景配置不存在: tenant_id={tenant_id}, scenario_id={scenario_id}")
         
-        return hot_score_config.get('action_weights', default_weights)
+        action_weights = hot_score_config.get('action_weights')
+        if not action_weights:
+            raise ValueError(
+                f"行为权重配置不存在: tenant_id={tenant_id}, scenario_id={scenario_id}. "
+                f"请在 MongoDB scenarios 集合中配置 realtime_compute.hot_score.action_weights"
+            )
+        
+        return action_weights
     
     def get_decay_lambda(self, tenant_id: str, scenario_id: str) -> float:
         """
@@ -139,10 +141,24 @@ class RealtimeConfigLoader:
             scenario_id: 场景ID
             
         Returns:
-            衰减系数（默认 0.1）
+            衰减系数
+            
+        Raises:
+            ValueError: 如果配置不存在
         """
         hot_score_config = self.get_hot_score_config(tenant_id, scenario_id)
-        return hot_score_config.get('decay_lambda', 0.1)
+        
+        if not hot_score_config:
+            raise ValueError(f"场景配置不存在: tenant_id={tenant_id}, scenario_id={scenario_id}")
+        
+        decay_lambda = hot_score_config.get('decay_lambda')
+        if decay_lambda is None:
+            raise ValueError(
+                f"衰减系数配置不存在: tenant_id={tenant_id}, scenario_id={scenario_id}. "
+                f"请在 MongoDB scenarios 集合中配置 realtime_compute.hot_score.decay_lambda"
+            )
+        
+        return float(decay_lambda)
     
     def get_window_config(self, tenant_id: str, scenario_id: str) -> Tuple[int, int]:
         """
@@ -154,11 +170,25 @@ class RealtimeConfigLoader:
             
         Returns:
             (window_size_minutes, window_slide_minutes)
+            
+        Raises:
+            ValueError: 如果配置不存在
         """
         hot_score_config = self.get_hot_score_config(tenant_id, scenario_id)
-        window_size = hot_score_config.get('window_size_minutes', 60)
-        window_slide = hot_score_config.get('window_slide_minutes', 15)
-        return window_size, window_slide
+        
+        if not hot_score_config:
+            raise ValueError(f"场景配置不存在: tenant_id={tenant_id}, scenario_id={scenario_id}")
+        
+        window_size = hot_score_config.get('window_size_minutes')
+        window_slide = hot_score_config.get('window_slide_minutes')
+        
+        if window_size is None or window_slide is None:
+            raise ValueError(
+                f"窗口配置不完整: tenant_id={tenant_id}, scenario_id={scenario_id}. "
+                f"请在 MongoDB scenarios 集合中配置 realtime_compute.hot_score.window_size_minutes 和 window_slide_minutes"
+            )
+        
+        return int(window_size), int(window_slide)
     
     def is_hot_score_enabled(self, tenant_id: str, scenario_id: str) -> bool:
         """
@@ -169,10 +199,12 @@ class RealtimeConfigLoader:
             scenario_id: 场景ID
             
         Returns:
-            是否启用
+            是否启用（如果配置不存在则返回 False）
         """
         hot_score_config = self.get_hot_score_config(tenant_id, scenario_id)
-        return hot_score_config.get('enabled', True)
+        if not hot_score_config:
+            return False
+        return hot_score_config.get('enabled', False)
     
     def get_user_profile_config(self, tenant_id: str, scenario_id: str) -> dict:
         """
@@ -183,9 +215,14 @@ class RealtimeConfigLoader:
             scenario_id: 场景ID
             
         Returns:
-            用户画像配置
+            用户画像配置（如果不存在则返回空字典）
+            
+        Raises:
+            ValueError: 如果场景配置不存在
         """
         config = self.get_config(tenant_id, scenario_id)
+        if not config:
+            raise ValueError(f"场景配置不存在: tenant_id={tenant_id}, scenario_id={scenario_id}")
         return config.get('user_profile', {})
     
     def get_metrics_config(self, tenant_id: str, scenario_id: str) -> dict:
@@ -197,9 +234,14 @@ class RealtimeConfigLoader:
             scenario_id: 场景ID
             
         Returns:
-            指标计算配置
+            指标计算配置（如果不存在则返回空字典）
+            
+        Raises:
+            ValueError: 如果场景配置不存在
         """
         config = self.get_config(tenant_id, scenario_id)
+        if not config:
+            raise ValueError(f"场景配置不存在: tenant_id={tenant_id}, scenario_id={scenario_id}")
         return config.get('metrics', {})
     
     def get_all_enabled_scenarios(self, job_type: str = 'hot_score') -> List[Tuple[str, str]]:
