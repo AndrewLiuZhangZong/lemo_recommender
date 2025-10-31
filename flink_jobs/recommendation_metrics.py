@@ -1,11 +1,20 @@
 """
-Flink Job 3: 实时指标统计
+Flink Job 3: 实时指标统计（配置驱动版）
 功能：从Kafka消费用户行为数据，实时计算推荐效果指标，输出到Prometheus
+特性：根据 MongoDB Scenario 配置动态计算指标
 """
 import json
 import sys
+import os
+import threading
+import time
 from datetime import datetime
 from collections import defaultdict
+from pathlib import Path
+
+# 添加项目根目录到路径
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
 try:
     from pyflink.datastream import StreamExecutionEnvironment
@@ -19,9 +28,23 @@ except ImportError:
     PYFLINK_AVAILABLE = False
     print("⚠️  PyFlink未安装，使用模拟模式")
 
+# 导入配置加载器
+try:
+    from app.services.realtime.config_loader import RealtimeConfigLoader
+except ImportError:
+    print("⚠️  无法导入 RealtimeConfigLoader，请检查项目路径")
+    RealtimeConfigLoader = None
+
 
 class MetricsAggregator(ProcessWindowFunction):
-    """指标聚合函数"""
+    """指标聚合函数（配置驱动版）"""
+    
+    def __init__(self, config_loader):
+        """
+        Args:
+            config_loader: RealtimeConfigLoader 实例，用于动态获取配置
+        """
+        self.config_loader = config_loader
     
     def process(self, key, context, elements):
         """
@@ -33,6 +56,10 @@ class MetricsAggregator(ProcessWindowFunction):
             elements: 窗口内的所有行为
         """
         tenant_id, scenario_id = key
+        
+        # 🔥 动态获取配置（根据租户和场景）
+        metrics_config = self.config_loader.get_metrics_config(tenant_id, scenario_id)
+        metrics_to_calculate = metrics_config.get('metrics_to_calculate', ['ctr', 'cvr', 'watch_time'])
         
         # 统计计数器
         stats = {
@@ -121,36 +148,78 @@ class MetricsAggregator(ProcessWindowFunction):
 
 
 class RecommendationMetrics:
-    """推荐效果实时指标统计"""
+    """推荐效果实时指标统计（配置驱动版）"""
     
     def __init__(
         self,
         kafka_servers: str = "localhost:9092",
+        mongodb_url: str = "mongodb://localhost:27017/",
+        mongodb_database: str = "lemo_recommender",
         prometheus_pushgateway: str = "localhost:9091"
     ):
         self.kafka_servers = kafka_servers
+        self.mongodb_url = mongodb_url
+        self.mongodb_database = mongodb_database
         self.prometheus_pushgateway = prometheus_pushgateway
+        
+        # 配置加载器
+        if RealtimeConfigLoader:
+            self.config_loader = RealtimeConfigLoader(mongodb_url, mongodb_database)
+            print(f"✅ 配置加载器已初始化")
+            
+            # 加载配置
+            self.config_loader.load_configs()
+            
+            # 启动配置刷新线程
+            self._start_config_refresh_thread()
+        else:
+            print("⚠️  RealtimeConfigLoader 不可用，将使用默认配置")
+            self.config_loader = None
+    
+    def _start_config_refresh_thread(self):
+        """启动配置刷新线程（每5分钟刷新一次）"""
+        def refresh():
+            while True:
+                try:
+                    time.sleep(300)  # 5分钟
+                    self.config_loader.load_configs()
+                    print("🔄 配置已刷新")
+                except Exception as e:
+                    print(f"⚠️  配置刷新失败: {e}")
+        
+        thread = threading.Thread(target=refresh, daemon=True)
+        thread.start()
+        print("✅ 配置刷新线程已启动（每5分钟）")
     
     def run(self):
         """运行Flink作业"""
         
         if not PYFLINK_AVAILABLE:
-            print("=" * 60)
-            print("  Flink Job: 推荐指标实时统计 (模拟模式)")
-            print("=" * 60)
+            print("=" * 70)
+            print("  Flink Job: 推荐指标实时统计（配置驱动版） - 模拟模式")
+            print("=" * 70)
             print()
             print("📊 作业配置:")
             print(f"  - Kafka: {self.kafka_servers}")
+            print(f"  - MongoDB: {self.mongodb_url}")
+            print(f"  - Database: {self.mongodb_database}")
             print(f"  - Prometheus: {self.prometheus_pushgateway}")
+            if self.config_loader:
+                print(f"  - 已加载场景数: {len(self.config_loader.configs)}")
+                self.config_loader.print_summary()
             print()
             print("⚠️  请安装PyFlink:")
             print("  pip install apache-flink")
             print()
             return
         
-        print("=" * 60)
-        print("  Flink Job: 推荐指标实时统计")
-        print("=" * 60)
+        print("=" * 70)
+        print("  Flink Job: 推荐指标实时统计（配置驱动版）")
+        print("=" * 70)
+        
+        # 打印配置摘要
+        if self.config_loader:
+            self.config_loader.print_summary()
         
         # 1. 创建执行环境
         env = StreamExecutionEnvironment.get_execution_environment()
@@ -177,12 +246,12 @@ class RecommendationMetrics:
             output_type=dict
         )
         
-        # 4. 按场景分组，1分钟窗口聚合
+        # 4. 按场景分组，1分钟窗口聚合（使用配置驱动的聚合器）
         metrics = (
             parsed_behaviors
             .key_by(lambda x: (x['tenant_id'], x['scenario_id']))
             .window(TumblingProcessingTimeWindows.of(Time.minutes(1)))
-            .process(MetricsAggregator())
+            .process(MetricsAggregator(self.config_loader))
         )
         
         # 5. 推送到Prometheus Pushgateway
@@ -252,13 +321,23 @@ recommendation_exposed_items{{tenant_id="{tenant_id}",scenario_id="{scenario_id}
 
 def main():
     """主函数"""
-    import os
-    
     kafka_servers = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
+    mongodb_url = os.getenv('MONGODB_URL', 'mongodb://localhost:27017/')
+    mongodb_database = os.getenv('MONGODB_DATABASE', 'lemo_recommender')
     prometheus_pushgateway = os.getenv('PROMETHEUS_PUSHGATEWAY', 'localhost:9091')
+    
+    print("=" * 70)
+    print("启动参数:")
+    print(f"  - Kafka: {kafka_servers}")
+    print(f"  - MongoDB: {mongodb_url}")
+    print(f"  - Database: {mongodb_database}")
+    print(f"  - Prometheus: {prometheus_pushgateway}")
+    print("=" * 70)
     
     metrics = RecommendationMetrics(
         kafka_servers=kafka_servers,
+        mongodb_url=mongodb_url,
+        mongodb_database=mongodb_database,
         prometheus_pushgateway=prometheus_pushgateway
     )
     
