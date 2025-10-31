@@ -33,6 +33,7 @@ class ItemKafkaConsumerService:
         
         print(f"[ItemKafkaConsumer] 初始化，监听Topics: {self.topics}")
     
+
     async def ensure_topics_exist(self):
         """确保所需的 Kafka Topics 存在，不存在则自动创建"""
         try:
