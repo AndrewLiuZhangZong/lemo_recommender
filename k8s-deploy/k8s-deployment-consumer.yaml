@@ -81,7 +81,7 @@ spec:
       - name: recommender-consumer
         image: ${IMAGE}
         imagePullPolicy: IfNotPresent
-        command: ["python3", "scripts/run_item_consumer.py"]
+        command: ["python3", "services/consumer/main.py"]
         env:
         - name: APP_ENV
           value: "prod"

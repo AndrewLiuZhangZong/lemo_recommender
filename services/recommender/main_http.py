@@ -3,6 +3,7 @@ HTTP 服务启动入口
 启动 FastAPI HTTP 服务
 """
 import sys
+import os
 from pathlib import Path
 
 # 添加项目根目录到 Python 路径
@@ -19,11 +20,16 @@ def main():
     """启动 HTTP 服务"""
     app = create_app()
     
+    # 从环境变量读取配置（K8s ConfigMap 使用 HTTP_HOST 和 HTTP_PORT）
+    host = os.getenv("HTTP_HOST", settings.host)
+    port = int(os.getenv("HTTP_PORT", str(settings.port)))
+    workers = int(os.getenv("HTTP_WORKERS", str(settings.workers if not settings.debug else 1)))
+    
     uvicorn.run(
         app,
-        host=settings.host,
-        port=settings.port,
-        workers=settings.workers if not settings.debug else 1,
+        host=host,
+        port=port,
+        workers=workers,
         log_level="info" if not settings.debug else "debug"
     )
 

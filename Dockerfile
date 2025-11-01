@@ -48,6 +48,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # 复制应用代码
 COPY app ./app
+COPY services ./services
 COPY scripts ./scripts
 COPY config ./config
 

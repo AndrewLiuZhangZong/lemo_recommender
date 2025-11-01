@@ -3,6 +3,7 @@ gRPC 服务启动入口
 启动 gRPC 服务
 """
 import sys
+import os
 import asyncio
 from pathlib import Path
 
@@ -16,8 +17,9 @@ from app.core.config import settings
 
 def main():
     """启动 gRPC 服务"""
-    host = "0.0.0.0"
-    port = 50051  # TODO: 从配置读取
+    # 从环境变量或配置读取 host 和 port
+    host = os.getenv("GRPC_HOST", getattr(settings, 'grpc_host', '0.0.0.0'))
+    port = int(os.getenv("GRPC_PORT", getattr(settings, 'grpc_port', 50051)))
     
     print("=" * 70)
     print("🚀 启动 gRPC 服务...")

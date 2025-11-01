@@ -18,7 +18,7 @@
 
 | 配置文件 | 说明 |
 |---------|------|
-| `k8s-deployment.yaml` | HTTP API + gRPC 服务配置 |
+| `k8s-deployment-http-grpc.yaml` | HTTP API + gRPC 服务配置 |
 | `k8s-deployment-worker.yaml` | Celery Worker 服务配置（2副本）|
 | `k8s-deployment-beat.yaml` | Celery Beat 服务配置（1副本）|
 | `k8s-deployment-consumer.yaml` | Kafka Consumer 服务配置 |
