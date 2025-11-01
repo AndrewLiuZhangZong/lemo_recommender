@@ -987,4 +987,3 @@ def get_flink_job_manager(flink_rest_url: Optional[str] = None) -> FlinkJobManag
     if _flink_job_manager is None:
         _flink_job_manager = FlinkJobManager(flink_rest_url)
     return _flink_job_manager
-

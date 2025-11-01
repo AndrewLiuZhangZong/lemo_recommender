@@ -1,0 +1,75 @@
+# Flink Python 支持镜像
+# 基于官方 Flink 镜像，添加 Python 和 PyFlink 支持
+
+FROM flink:1.19-scala_2.12-java11
+
+LABEL maintainer="Lemo Recommender Team"
+LABEL description="Flink with Python and PyFlink support for enterprise-grade job management"
+
+# 切换到 root 用户安装软件
+USER root
+
+# 安装 Python 3.9 和必要工具
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3.9 \
+        python3.9-dev \
+        python3-pip \
+        python3-venv \
+        wget \
+        curl \
+        unzip \
+        vim \
+    && ln -sf /usr/bin/python3.9 /usr/bin/python3 \
+    && ln -sf /usr/bin/python3 /usr/bin/python \
+    && rm -rf /var/lib/apt/lists/*
+
+# 升级 pip
+RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# 安装 PyFlink（与 Flink 版本匹配）
+RUN pip3 install --no-cache-dir apache-flink==1.19.0
+
+# 安装常用 Python 数据处理库
+RUN pip3 install --no-cache-dir \
+    pandas==2.1.4 \
+    numpy==1.26.3 \
+    kafka-python==2.0.2 \
+    pymongo==4.6.1 \
+    redis==5.0.1 \
+    httpx==0.26.0 \
+    aiohttp==3.9.0 \
+    pyyaml==6.0.1
+
+# 安装 Flink 连接器（常用）
+RUN pip3 install --no-cache-dir \
+    apache-flink-libraries==1.19.0
+
+# 创建作业目录
+RUN mkdir -p /opt/flink/usrlib \
+    && mkdir -p /opt/flink/python-archives \
+    && mkdir -p /opt/flink/checkpoints \
+    && mkdir -p /opt/flink/savepoints
+
+# 设置 Python 环境变量
+ENV PYFLINK_CLIENT_EXECUTABLE=python3
+ENV PYTHON_HOME=/usr
+ENV PATH="${PYTHON_HOME}/bin:${PATH}"
+
+# 配置 Flink Python 支持
+RUN echo "python.client.executable: python3" >> /opt/flink/conf/flink-conf.yaml \
+    && echo "python.executable: python3" >> /opt/flink/conf/flink-conf.yaml
+
+# 切换回 flink 用户
+USER flink
+
+# 设置工作目录
+WORKDIR /opt/flink
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8081/overview || exit 1
+
+# 默认命令（启动 JobManager）
+CMD ["jobmanager"]
+

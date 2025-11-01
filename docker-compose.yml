@@ -213,7 +213,12 @@ services:
   # Apache Flink (流处理引擎)
   # Standalone 模式：单容器包含 JobManager 和 TaskManager
   flink:
-    image: flink:1.19-scala_2.12-java11
+    # 使用 ACR 镜像（推荐生产环境）
+    # image: registry.cn-shenzhen.aliyuncs.com/lemo-ai/flink-python:1.19
+    # 或本地构建
+    build:
+      context: .
+      dockerfile: Dockerfile.flink-python
     container_name: lemo-flink
     ports:
       - "8081:8081"  # Flink Web UI
@@ -223,10 +228,13 @@ services:
         jobmanager.rpc.address: flink
         taskmanager.numberOfTaskSlots: 4
         parallelism.default: 2
+        python.client.executable: python3
+        python.executable: python3
     volumes:
       - flink_data:/opt/flink/data
       - flink_checkpoints:/opt/flink/checkpoints
       - flink_savepoints:/opt/flink/savepoints
+      - ./flink_jobs:/opt/flink/usrlib  # 挂载 Python 作业目录
     command: >
       bash -c "
       ./bin/start-cluster.sh &&
@@ -236,6 +244,45 @@ services:
       - lemo-network
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8081/overview || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  flink-sql-gateway:
+    image: flink:1.19-scala_2.12-java11
+    container_name: lemo-flink-sql-gateway
+    ports:
+      - "8083:8083"  # SQL Gateway REST API
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink
+        rest.address: flink
+        rest.port: 8081
+    command: >
+      bash -c "
+      cat > /opt/flink/conf/sql-gateway-defaults.yaml << EOF
+      sql-gateway:
+        endpoint:
+          rest:
+            address: 0.0.0.0
+            port: 8083
+        session:
+          idle-timeout: 10min
+          max-num: 100
+      EOF
+      ./bin/sql-gateway.sh start-foreground \
+        -Dsql-gateway.endpoint.rest.address=0.0.0.0 \
+        -Dsql-gateway.endpoint.rest.port=8083 \
+        -Djobmanager.rpc.address=flink \
+        -Drest.address=flink \
+        -Drest.port=8081
+      "
+    networks:
+      - lemo-network
+    depends_on:
+      - flink
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8083/v1/info || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5

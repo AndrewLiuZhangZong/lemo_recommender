@@ -66,6 +66,7 @@ python-multipart = "^0.0.6"
 httpx = "^0.26.0"
 aiohttp = "^3.9.0"  # 异步HTTP客户端（用于文件上传）
 aiofiles = "^23.2.1"
+kubernetes = "^28.1.0"  # Kubernetes API 客户端（用于提交 Python 作业）
 
 [tool.poetry.group.dev.dependencies]
 # 代码质量
