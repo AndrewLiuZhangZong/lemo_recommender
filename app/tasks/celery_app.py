@@ -15,7 +15,8 @@ celery_app = Celery(
         "app.tasks.item_tasks",
         "app.tasks.user_tasks",
         "app.tasks.model_tasks",
-        "app.tasks.recommendation_tasks"
+        "app.tasks.recommendation_tasks",
+        "app.tasks.flink_tasks"  # Flink 作业管理任务
     ]
 )
 
@@ -63,6 +64,18 @@ celery_app.conf.beat_schedule = {
     "cleanup-expired-cache-daily": {
         "task": "app.tasks.recommendation_tasks.cleanup_expired_cache",
         "schedule": crontab(minute=0, hour=4),  # 每天4:00
+        "args": (),
+    },
+    # 每3分钟同步 Flink 作业状态
+    "sync-flink-job-status-3min": {
+        "task": "sync_flink_job_status",
+        "schedule": crontab(minute="*/3"),  # 每3分钟
+        "args": (),
+    },
+    # 每天凌晨2点清理完成的 K8s Job
+    "cleanup-k8s-jobs-daily": {
+        "task": "cleanup_completed_k8s_jobs",
+        "schedule": crontab(minute=0, hour=2),  # 每天2:00
         "args": (),
     },
 }

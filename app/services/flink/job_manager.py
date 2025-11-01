@@ -516,6 +516,10 @@ class FlinkJobManager:
         try:
             batch_v1.create_namespaced_job(namespace=namespace, body=job)
             logger.info(f"✓ Kubernetes Job 创建成功: {job_name}")
+            
+            # 返回 K8s Job 名称（作为临时的 job_id）
+            # 注意：真正的 Flink Job ID 需要异步获取
+            # 后台任务会定期检查 K8s Job 状态并更新 Flink Job ID
             return job_name
         except Exception as e:
             raise RuntimeError(f"创建 Kubernetes Job 失败: {e}")
@@ -999,6 +1003,177 @@ if __name__ == '__main__':
             jobs.append(FlinkJob(**doc))
         
         return jobs
+    
+    async def sync_job_status_from_k8s(self, job_id: str) -> bool:
+        """
+        从 K8s Job 同步 Flink 作业状态
+        
+        用于 Python 作业：K8s Job 提交后，需要从 K8s Job 日志中提取 Flink Job ID
+        然后查询 Flink REST API 获取真实的作业状态
+        
+        Args:
+            job_id: 作业 ID（对应 K8s Job 名称）
+            
+        Returns:
+            是否成功同步
+        """
+        from kubernetes import client as k8s_client, config as k8s_config
+        
+        try:
+            # 加载 K8s 配置
+            try:
+                k8s_config.load_incluster_config()
+            except Exception:
+                try:
+                    k8s_config.load_kube_config()
+                except Exception as e:
+                    logger.warning(f"无法加载 Kubernetes 配置: {e}")
+                    return False
+            
+            batch_v1 = k8s_client.BatchV1Api()
+            core_v1 = k8s_client.CoreV1Api()
+            namespace = "lemo-dev"
+            
+            # 查询数据库中的作业记录
+            db = mongodb.get_database()
+            collection = db.flink_jobs
+            job_doc = await collection.find_one({"job_id": job_id})
+            
+            if not job_doc:
+                logger.warning(f"作业记录不存在: {job_id}")
+                return False
+            
+            flink_job = FlinkJob(**job_doc)
+            
+            # 如果已经有 Flink Job ID，直接查询 Flink 状态
+            if flink_job.flink_job_id:
+                return await self._sync_from_flink(flink_job)
+            
+            # 尝试从 K8s Job 获取 Flink Job ID
+            k8s_job_name = f"flink-py-{job_id.replace('_', '-')}"[:63]
+            k8s_job_name = k8s_job_name.rstrip('-')
+            
+            # 查询 K8s Job
+            try:
+                k8s_job = batch_v1.read_namespaced_job(name=k8s_job_name, namespace=namespace)
+            except Exception as e:
+                logger.warning(f"K8s Job 不存在: {k8s_job_name}, 错误: {e}")
+                return False
+            
+            # 检查 Job 状态
+            if k8s_job.status.succeeded:
+                # Job 成功完成，尝试从日志中提取 Flink Job ID
+                pods = core_v1.list_namespaced_pod(
+                    namespace=namespace,
+                    label_selector=f"job-name={k8s_job_name}"
+                )
+                
+                if pods.items:
+                    pod = pods.items[0]
+                    try:
+                        logs = core_v1.read_namespaced_pod_log(
+                            name=pod.metadata.name,
+                            namespace=namespace
+                        )
+                        
+                        # 从日志中提取 Flink Job ID（格式: Job has been submitted with JobID xxx）
+                        import re
+                        match = re.search(r'Job has been submitted with JobID ([a-f0-9]+)', logs)
+                        if match:
+                            flink_job_id = match.group(1)
+                            logger.info(f"从 K8s Job 日志中提取到 Flink Job ID: {flink_job_id}")
+                            
+                            # 更新数据库
+                            flink_job.flink_job_id = flink_job_id
+                            flink_job.status = JobStatus.RUNNING
+                            await collection.update_one(
+                                {"job_id": job_id},
+                                {"$set": {
+                                    "flink_job_id": flink_job_id,
+                                    "status": JobStatus.RUNNING.value
+                                }}
+                            )
+                            
+                            # 继续同步 Flink 状态
+                            return await self._sync_from_flink(flink_job)
+                    except Exception as e:
+                        logger.warning(f"读取 Pod 日志失败: {e}")
+            
+            elif k8s_job.status.failed:
+                # Job 失败
+                logger.warning(f"K8s Job 执行失败: {k8s_job_name}")
+                await collection.update_one(
+                    {"job_id": job_id},
+                    {"$set": {
+                        "status": JobStatus.FAILED.value,
+                        "error_message": "Kubernetes Job 执行失败"
+                    }}
+                )
+                return True
+            
+            # Job 还在运行中，暂不更新
+            return False
+            
+        except Exception as e:
+            logger.error(f"同步作业状态失败: {job_id}, 错误: {e}", exc_info=True)
+            return False
+    
+    async def _sync_from_flink(self, job: FlinkJob) -> bool:
+        """从 Flink REST API 同步作业状态"""
+        try:
+            if not job.flink_job_id:
+                return False
+            
+            # 查询 Flink 作业状态
+            response = await self.client.get(f"/jobs/{job.flink_job_id}")
+            response.raise_for_status()
+            
+            flink_status = response.json()
+            state = flink_status.get("state", "").upper()
+            
+            # 映射 Flink 状态到我们的状态
+            status_mapping = {
+                "CREATED": JobStatus.CREATED,
+                "RUNNING": JobStatus.RUNNING,
+                "FINISHED": JobStatus.FINISHED,
+                "FAILED": JobStatus.FAILED,
+                "CANCELED": JobStatus.CANCELLED,
+                "CANCELLING": JobStatus.RUNNING,
+                "RESTARTING": JobStatus.RUNNING,
+                "SUSPENDED": JobStatus.SUSPENDED,
+            }
+            
+            new_status = status_mapping.get(state, JobStatus.RUNNING)
+            
+            # 更新数据库
+            db = mongodb.get_database()
+            collection = db.flink_jobs
+            
+            update_data = {
+                "status": new_status.value,
+            }
+            
+            # 如果作业完成，记录结束时间
+            if new_status in [JobStatus.FINISHED, JobStatus.FAILED, JobStatus.CANCELLED]:
+                update_data["end_time"] = datetime.utcnow().isoformat()
+                
+                # 计算运行时长
+                if job.start_time:
+                    start = datetime.fromisoformat(job.start_time)
+                    end = datetime.utcnow()
+                    update_data["duration"] = int((end - start).total_seconds())
+            
+            await collection.update_one(
+                {"job_id": job.job_id},
+                {"$set": update_data}
+            )
+            
+            logger.info(f"同步作业状态成功: {job.job_id}, Flink 状态: {state} -> {new_status.value}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"从 Flink 同步状态失败: {job.job_id}, 错误: {e}")
+            return False
 
 
 # 全局单例
