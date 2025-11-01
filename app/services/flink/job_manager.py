@@ -413,10 +413,6 @@ class FlinkJobManager:
         if "args" in request.job_config:
             args = request.job_config["args"]
         
-        # 检查脚本文件是本地路径还是 URL
-        import os
-        import aiofiles
-        
         # 1. 获取脚本内容
         logger.info(f"准备 Python 脚本: {script_path}")
         
