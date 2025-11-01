@@ -12,7 +12,6 @@
 | `deploy-worker-service.sh` | 部署 Celery Worker 服务 | ✅ Worker |
 | `deploy-beat-service.sh` | 部署 Celery Beat 服务 | ✅ Beat |
 | `deploy-consumer-service.sh` | 部署 Kafka Consumer 服务 | ✅ Consumer |
-| `deploy-all-services.sh` | 一键部署所有服务 | ✅ HTTP API<br/>✅ gRPC<br/>✅ Worker<br/>✅ Beat<br/>✅ Consumer |
 
 ### K8s 配置文件
 
@@ -48,31 +47,13 @@ cd /Users/edy/PycharmProjects/lemo_recommender
 
 ---
 
-### 方案2：部署完整系统
+### 方案2：按需部署服务
 
 **适用场景**：生产环境、需要模型训练和 Kafka 消费
 
 ```bash
-# 一键部署所有服务
-cd /Users/edy/PycharmProjects/lemo_recommender
-./k8s-deploy/deploy-all-services.sh
-```
-
-**部署结果**：
-- ✅ HTTP API（端口 10071）
-- ✅ gRPC 服务（端口 10072）
-- ✅ Celery Worker（2副本，支持模型训练）
-- ✅ Celery Beat（1副本，定时任务调度）
-- ✅ Kafka Consumer（消费物品事件）
-
----
-
-### 方案3：按需部署服务
-
-**适用场景**：逐步扩展功能
-
-```bash
 # 1. 先部署核心服务
+cd /Users/edy/PycharmProjects/lemo_recommender
 ./k8s-deploy/deploy-http-grpc-service.sh
 
 # 2. 需要模型训练时，部署 Worker + Beat
@@ -82,6 +63,13 @@ cd /Users/edy/PycharmProjects/lemo_recommender
 # 3. 需要 Kafka 物品接入时，部署 Consumer
 ./k8s-deploy/deploy-consumer-service.sh
 ```
+
+**完整系统部署结果**：
+- ✅ HTTP API（端口 10071）
+- ✅ gRPC 服务（端口 10072）
+- ✅ Celery Worker（支持模型训练）
+- ✅ Celery Beat（定时任务调度）
+- ✅ Kafka Consumer（消费物品事件）
 
 ---
 
@@ -146,9 +134,9 @@ kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get svc -l app=le
 # 查看特定组件
 kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get pods -l component=http
 kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get pods -l component=grpc
-kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get pods -l component=worker
-kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get pods -l component=beat
-kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get pods -l component=consumer
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get pods -l app=lemo-service-recommender-worker
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get pods -l app=lemo-service-recommender-beat
+kubectl --kubeconfig=k8s-deploy/k3s-jd-config.yaml -n lemo-dev get pods -l app=lemo-service-recommender-consumer
 ```
 
 ### 查看日志
