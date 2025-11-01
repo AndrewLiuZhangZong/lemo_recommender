@@ -445,16 +445,15 @@ class FlinkJobManager:
         form = aiohttp.FormData()
         form.add_field('file',
                       script_content,
-                      filename=os.path.basename(script_path),
+                      filename=script_filename,
                       content_type='text/x-python')
         
-        # 上传文件到 Flink
-        upload_response = await self.client.post(
-            "/jars/upload",
-            data=form
-        )
-        upload_response.raise_for_status()
-        upload_result = upload_response.json()
+        # 使用 aiohttp 上传文件（httpx 不支持 FormData）
+        async with aiohttp.ClientSession() as session:
+            upload_url = f"{self.flink_rest_url}/jars/upload"
+            async with session.post(upload_url, data=form) as upload_response:
+                upload_response.raise_for_status()
+                upload_result = await upload_response.json()
         
         # 获取上传的文件名（Flink 会返回一个临时的 jar ID）
         filename = upload_result.get("filename")
@@ -645,13 +644,12 @@ if __name__ == '__main__':
                           filename='sql_job.py',
                           content_type='text/x-python')
             
-            # 上传文件到 Flink
-            upload_response = await self.client.post(
-                "/jars/upload",
-                data=form
-            )
-            upload_response.raise_for_status()
-            upload_result = upload_response.json()
+            # 使用 aiohttp 上传文件
+            async with aiohttp.ClientSession() as session:
+                upload_url = f"{self.flink_rest_url}/jars/upload"
+                async with session.post(upload_url, data=form) as upload_response:
+                    upload_response.raise_for_status()
+                    upload_result = await upload_response.json()
             
             filename = upload_result.get("filename")
             if not filename:
@@ -750,13 +748,12 @@ if __name__ == '__main__':
                       filename=script_filename,
                       content_type='text/x-python')
         
-        # 上传文件到 Flink
-        upload_response = await self.client.post(
-            "/jars/upload",
-            data=form
-        )
-        upload_response.raise_for_status()
-        upload_result = upload_response.json()
+        # 使用 aiohttp 上传文件
+        async with aiohttp.ClientSession() as session:
+            upload_url = f"{self.flink_rest_url}/jars/upload"
+            async with session.post(upload_url, data=form) as upload_response:
+                upload_response.raise_for_status()
+                upload_result = await upload_response.json()
         
         filename = upload_result.get("filename")
         if not filename:
@@ -862,12 +859,12 @@ if __name__ == '__main__':
                       filename=jar_filename,
                       content_type='application/java-archive')
         
-        upload_response = await self.client.post(
-            "/jars/upload",
-            data=form
-        )
-        upload_response.raise_for_status()
-        upload_result = upload_response.json()
+        # 使用 aiohttp 上传文件
+        async with aiohttp.ClientSession() as session:
+            upload_url = f"{self.flink_rest_url}/jars/upload"
+            async with session.post(upload_url, data=form) as upload_response:
+                upload_response.raise_for_status()
+                upload_result = await upload_response.json()
         
         # 获取上传的文件名/ID
         filename = upload_result.get("filename")
