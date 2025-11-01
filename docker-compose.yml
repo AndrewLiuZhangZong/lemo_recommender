@@ -214,11 +214,11 @@ services:
   # Standalone 模式：单容器包含 JobManager 和 TaskManager
   flink:
     # 使用 ACR 镜像（推荐生产环境）
-    # image: registry.cn-shenzhen.aliyuncs.com/lemo-ai/flink-python:1.19
-    # 或本地构建
-    build:
-      context: .
-      dockerfile: Dockerfile.flink-python
+    image: registry.cn-beijing.aliyuncs.com/lemo_zls/flink-python:1.19
+    # 或本地构建（开发环境）
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.flink-python
     container_name: lemo-flink
     ports:
       - "8081:8081"  # Flink Web UI
