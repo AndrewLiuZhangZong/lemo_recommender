@@ -20,13 +20,12 @@ echo ""
 ACR_REGISTRY="registry.cn-beijing.aliyuncs.com"
 ACR_NAMESPACE="lemo_zls"
 ACR_IMAGE="flink-python"  # Flink Python 镜像名
-ACR_TAG="1.19"  # Flink 版本号
+ACR_TAG="latest"  # 使用 latest 标签
 ACR_USERNAME="北京乐莫科技"
 ACR_PASSWORD="Andrew1870361"
 
 # 完整镜像名称
 IMAGE="$ACR_REGISTRY/$ACR_NAMESPACE/$ACR_IMAGE:$ACR_TAG"
-IMAGE_LATEST="$ACR_REGISTRY/$ACR_NAMESPACE/$ACR_IMAGE:latest"
 
 echo -e "${BLUE}📋 配置信息:${NC}"
 echo "  ACR 仓库: ${ACR_REGISTRY}"
@@ -49,7 +48,6 @@ echo "----------------------------------------"
 docker buildx build --platform linux/amd64 \
     -f Dockerfile.flink-python \
     -t $IMAGE \
-    -t $IMAGE_LATEST \
     --load \
     .
 
@@ -74,7 +72,7 @@ else
 fi
 echo ""
 
-# 3. 推送镜像（推送两个标签：版本号 + latest）
+# 3. 推送镜像
 echo -e "${YELLOW}[3/5] 推送镜像到 ACR...${NC}"
 echo "----------------------------------------"
 
@@ -85,16 +83,6 @@ if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ 推送成功: ${IMAGE}${NC}"
 else
     echo -e "${RED}✗ 推送失败: ${IMAGE}${NC}"
-    exit 1
-fi
-
-echo "推送: ${IMAGE_LATEST}"
-docker push $IMAGE_LATEST
-
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ 推送成功: ${IMAGE_LATEST}${NC}"
-else
-    echo -e "${RED}✗ 推送失败: ${IMAGE_LATEST}${NC}"
     exit 1
 fi
 echo ""
@@ -113,7 +101,6 @@ echo ""
 
 echo -e "${BLUE}📦 已推送的镜像:${NC}"
 echo "  ✓ ${IMAGE}"
-echo "  ✓ ${IMAGE_LATEST}"
 echo ""
 
 echo -e "${BLUE}🚀 在服务器上使用:${NC}"

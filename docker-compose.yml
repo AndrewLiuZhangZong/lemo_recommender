@@ -214,7 +214,7 @@ services:
   # Standalone 模式：单容器包含 JobManager 和 TaskManager
   flink:
     # 使用 ACR 镜像（推荐生产环境）
-    image: registry.cn-beijing.aliyuncs.com/lemo_zls/flink-python:1.19
+    image: registry.cn-beijing.aliyuncs.com/lemo_zls/flink-python:latest
     # 或本地构建（开发环境）
     # build:
     #   context: .
