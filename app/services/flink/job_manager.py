@@ -4,6 +4,10 @@ Flink 作业管理服务
 """
 import httpx
 import asyncio
+import os
+import tempfile
+import aiohttp
+import aiofiles
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 from urllib.parse import urljoin
@@ -442,7 +446,6 @@ class FlinkJobManager:
         logger.info(f"上传 Python 脚本到 Flink: {script_filename}")
         
         # 构建 multipart form data
-        import aiohttp
         form = aiohttp.FormData()
         form.add_field('file',
                       script_content,
@@ -569,9 +572,6 @@ class FlinkJobManager:
         
         # 如果指定了 SQL 文件，读取内容
         if sql_file:
-            import os
-            import aiofiles
-            
             if sql_file.startswith(('http://', 'https://')):
                 # 从 URL 下载 SQL 文件
                 logger.info(f"从 URL 下载 SQL 文件: {sql_file}")
@@ -594,10 +594,6 @@ class FlinkJobManager:
             raise ValueError("SQL 内容为空")
         
         # 创建临时 PyFlink 脚本来执行 SQL
-        import tempfile
-        import os
-        import aiofiles
-        
         # 生成 PyFlink Table API 脚本
         pyflink_script = f'''
 from pyflink.table import EnvironmentSettings, TableEnvironment
@@ -647,7 +643,6 @@ if __name__ == '__main__':
                 script_content = await f.read()
             
             # 构建 multipart form data
-            import aiohttp
             form = aiohttp.FormData()
             form.add_field('file',
                           script_content,
@@ -724,10 +719,6 @@ if __name__ == '__main__':
         if "args" in request.job_config:
             args = request.job_config["args"]
         
-        # 检查脚本文件是本地路径还是 URL
-        import os
-        import aiofiles
-        
         # 1. 获取脚本内容
         logger.info(f"准备 PyFlink 脚本: {script_path}")
         
@@ -757,7 +748,6 @@ if __name__ == '__main__':
         logger.info(f"上传 PyFlink 脚本到 Flink: {script_filename}")
         
         # 构建 multipart form data
-        import aiohttp
         form = aiohttp.FormData()
         form.add_field('file',
                       script_content,
@@ -823,10 +813,6 @@ if __name__ == '__main__':
         Returns:
             JAR ID（文件名）
         """
-        import os
-        import aiofiles
-        import aiohttp
-        
         # 检查 JAR 文件是本地路径还是 URL
         if jar_path.startswith(('http://', 'https://')):
             # 从 URL 中提取文件名
