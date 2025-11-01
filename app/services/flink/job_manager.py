@@ -409,19 +409,37 @@ class FlinkJobManager:
         if "args" in request.job_config:
             args = request.job_config["args"]
         
-        # 检查脚本文件是否存在
+        # 检查脚本文件是本地路径还是 URL
         import os
         import aiofiles
         
-        if not os.path.exists(script_path):
-            raise FileNotFoundError(f"脚本文件不存在: {script_path}")
+        # 1. 获取脚本内容
+        logger.info(f"准备 Python 脚本: {script_path}")
         
-        # 1. 上传 Python 脚本
-        logger.info(f"上传 Python 脚本: {script_path}")
+        if script_path.startswith(('http://', 'https://')):
+            # 从 URL 下载脚本
+            logger.info(f"从 URL 下载脚本: {script_path}")
+            try:
+                download_response = await self.client.get(script_path)
+                download_response.raise_for_status()
+                script_content = download_response.content
+                # 从 URL 中提取文件名
+                script_filename = script_path.split('/')[-1]
+                logger.info(f"✓ 脚本下载成功: {script_filename} ({len(script_content)} bytes)")
+            except Exception as e:
+                raise RuntimeError(f"下载脚本失败: {script_path}, 错误: {e}")
+        else:
+            # 本地文件路径
+            if not os.path.exists(script_path):
+                raise FileNotFoundError(f"脚本文件不存在: {script_path}")
+            
+            logger.info(f"读取本地脚本: {script_path}")
+            async with aiofiles.open(script_path, 'rb') as f:
+                script_content = await f.read()
+            script_filename = os.path.basename(script_path)
         
-        # 读取脚本内容
-        async with aiofiles.open(script_path, 'rb') as f:
-            script_content = await f.read()
+        # 2. 上传 Python 脚本到 Flink
+        logger.info(f"上传 Python 脚本到 Flink: {script_filename}")
         
         # 构建 multipart form data
         import aiohttp
@@ -554,11 +572,23 @@ class FlinkJobManager:
             import os
             import aiofiles
             
-            if not os.path.exists(sql_file):
-                raise FileNotFoundError(f"SQL 文件不存在: {sql_file}")
-            
-            async with aiofiles.open(sql_file, 'r', encoding='utf-8') as f:
-                sql = await f.read()
+            if sql_file.startswith(('http://', 'https://')):
+                # 从 URL 下载 SQL 文件
+                logger.info(f"从 URL 下载 SQL 文件: {sql_file}")
+                try:
+                    download_response = await self.client.get(sql_file)
+                    download_response.raise_for_status()
+                    sql = download_response.text
+                    logger.info(f"✓ SQL 文件下载成功 ({len(sql)} chars)")
+                except Exception as e:
+                    raise RuntimeError(f"下载 SQL 文件失败: {sql_file}, 错误: {e}")
+            else:
+                # 本地文件路径
+                if not os.path.exists(sql_file):
+                    raise FileNotFoundError(f"SQL 文件不存在: {sql_file}")
+                
+                async with aiofiles.open(sql_file, 'r', encoding='utf-8') as f:
+                    sql = await f.read()
         
         if not sql:
             raise ValueError("SQL 内容为空")
@@ -694,25 +724,44 @@ if __name__ == '__main__':
         if "args" in request.job_config:
             args = request.job_config["args"]
         
-        # 检查脚本文件是否存在
+        # 检查脚本文件是本地路径还是 URL
         import os
         import aiofiles
         
-        if not os.path.exists(script_path):
-            raise FileNotFoundError(f"PyFlink 脚本文件不存在: {script_path}")
+        # 1. 获取脚本内容
+        logger.info(f"准备 PyFlink 脚本: {script_path}")
         
-        # 1. 上传 PyFlink 脚本
-        logger.info(f"上传 PyFlink 脚本: {script_path}")
+        if script_path.startswith(('http://', 'https://')):
+            # 从 URL 下载脚本
+            logger.info(f"从 URL 下载 PyFlink 脚本: {script_path}")
+            try:
+                download_response = await self.client.get(script_path)
+                download_response.raise_for_status()
+                script_content = download_response.content
+                # 从 URL 中提取文件名
+                script_filename = script_path.split('/')[-1]
+                logger.info(f"✓ PyFlink 脚本下载成功: {script_filename} ({len(script_content)} bytes)")
+            except Exception as e:
+                raise RuntimeError(f"下载 PyFlink 脚本失败: {script_path}, 错误: {e}")
+        else:
+            # 本地文件路径
+            if not os.path.exists(script_path):
+                raise FileNotFoundError(f"PyFlink 脚本文件不存在: {script_path}")
+            
+            logger.info(f"读取本地 PyFlink 脚本: {script_path}")
+            async with aiofiles.open(script_path, 'rb') as f:
+                script_content = await f.read()
+            script_filename = os.path.basename(script_path)
         
-        async with aiofiles.open(script_path, 'rb') as f:
-            script_content = await f.read()
+        # 2. 上传 PyFlink 脚本到 Flink
+        logger.info(f"上传 PyFlink 脚本到 Flink: {script_filename}")
         
         # 构建 multipart form data
         import aiohttp
         form = aiohttp.FormData()
         form.add_field('file',
                       script_content,
-                      filename=os.path.basename(script_path),
+                      filename=script_filename,
                       content_type='text/x-python')
         
         # 上传文件到 Flink
@@ -727,7 +776,7 @@ if __name__ == '__main__':
         if not filename:
             raise RuntimeError("上传 PyFlink 脚本失败，未返回文件名")
         
-        logger.info(f"PyFlink 脚本上传成功: {filename}")
+        logger.info(f"✓ PyFlink 脚本上传成功: {filename}")
         
         # 2. 构建运行参数
         program_args_list = ["-py", filename]
@@ -778,11 +827,15 @@ if __name__ == '__main__':
         import aiofiles
         import aiohttp
         
-        # 检查 JAR 文件是否存在
-        if not os.path.exists(jar_path):
-            raise FileNotFoundError(f"JAR 文件不存在: {jar_path}")
-        
-        jar_filename = os.path.basename(jar_path)
+        # 检查 JAR 文件是本地路径还是 URL
+        if jar_path.startswith(('http://', 'https://')):
+            # 从 URL 中提取文件名
+            jar_filename = jar_path.split('/')[-1]
+        else:
+            # 本地文件路径
+            if not os.path.exists(jar_path):
+                raise FileNotFoundError(f"JAR 文件不存在: {jar_path}")
+            jar_filename = os.path.basename(jar_path)
         
         # 1. 检查 JAR 是否已上传
         try:
@@ -798,11 +851,27 @@ if __name__ == '__main__':
         except Exception as e:
             logger.warning(f"检查已上传 JAR 失败: {e}")
         
-        # 2. 上传 JAR
-        logger.info(f"上传 JAR 文件: {jar_path}")
+        # 2. 获取 JAR 内容
+        logger.info(f"准备 JAR 文件: {jar_path}")
         
-        async with aiofiles.open(jar_path, 'rb') as f:
-            jar_content = await f.read()
+        if jar_path.startswith(('http://', 'https://')):
+            # 从 URL 下载 JAR
+            logger.info(f"从 URL 下载 JAR: {jar_path}")
+            try:
+                download_response = await self.client.get(jar_path)
+                download_response.raise_for_status()
+                jar_content = download_response.content
+                logger.info(f"✓ JAR 下载成功: {jar_filename} ({len(jar_content)} bytes)")
+            except Exception as e:
+                raise RuntimeError(f"下载 JAR 失败: {jar_path}, 错误: {e}")
+        else:
+            # 本地文件路径
+            logger.info(f"读取本地 JAR: {jar_path}")
+            async with aiofiles.open(jar_path, 'rb') as f:
+                jar_content = await f.read()
+        
+        # 3. 上传 JAR 到 Flink
+        logger.info(f"上传 JAR 到 Flink: {jar_filename}")
         
         # 构建 multipart form data
         form = aiohttp.FormData()
