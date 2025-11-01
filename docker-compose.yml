@@ -220,12 +220,15 @@ services:
     #   context: .
     #   dockerfile: Dockerfile.flink-python
     container_name: lemo-flink
+    user: root  # 使用 root 用户避免权限问题
     ports:
       - "8081:8081"  # Flink Web UI
       - "6123:6123"  # JobManager RPC
     environment:
       FLINK_PROPERTIES: |
         jobmanager.rpc.address: flink
+        jobmanager.memory.process.size: 1600m
+        taskmanager.memory.process.size: 1728m
         taskmanager.numberOfTaskSlots: 4
         parallelism.default: 2
         python.client.executable: python3
@@ -237,6 +240,7 @@ services:
       - ./flink_jobs:/opt/flink/usrlib  # 挂载 Python 作业目录
     command: >
       bash -c "
+      chmod -R 755 /opt/flink/conf &&
       ./bin/start-cluster.sh &&
       tail -f /opt/flink/log/*.log
       "
@@ -251,6 +255,7 @@ services:
   flink-sql-gateway:
     image: flink:1.19-scala_2.12-java11
     container_name: lemo-flink-sql-gateway
+    user: root
     ports:
       - "8083:8083"  # SQL Gateway REST API
     environment:
@@ -258,25 +263,27 @@ services:
         jobmanager.rpc.address: flink
         rest.address: flink
         rest.port: 8081
-    command: >
-      bash -c "
-      cat > /opt/flink/conf/sql-gateway-defaults.yaml << EOF
-      sql-gateway:
-        endpoint:
-          rest:
-            address: 0.0.0.0
-            port: 8083
-        session:
-          idle-timeout: 10min
-          max-num: 100
-      EOF
-      ./bin/sql-gateway.sh start-foreground \
-        -Dsql-gateway.endpoint.rest.address=0.0.0.0 \
-        -Dsql-gateway.endpoint.rest.port=8083 \
-        -Djobmanager.rpc.address=flink \
-        -Drest.address=flink \
-        -Drest.port=8081
-      "
+    command:
+      - /bin/bash
+      - -c
+      - |
+        cat > /opt/flink/conf/sql-gateway-defaults.yaml <<'EOFCONFIG'
+        sql-gateway:
+          endpoint:
+            rest:
+              address: 0.0.0.0
+              port: 8083
+          session:
+            idle-timeout: 10min
+            max-num: 100
+        EOFCONFIG
+        chmod 644 /opt/flink/conf/sql-gateway-defaults.yaml
+        ./bin/sql-gateway.sh start-foreground \
+          -Dsql-gateway.endpoint.rest.address=0.0.0.0 \
+          -Dsql-gateway.endpoint.rest.port=8083 \
+          -Djobmanager.rpc.address=flink \
+          -Drest.address=flink \
+          -Drest.port=8081
     networks:
       - lemo-network
     depends_on:
