@@ -105,7 +105,7 @@ spec:
         resources:
           requests:
             memory: "128Mi"
-            cpu: "100m"
+            cpu: "50m"  # 降低 CPU 请求以避免资源不足
           limits:
             memory: "512Mi"
             cpu: "500m"
@@ -183,7 +183,7 @@ spec:
         resources:
           requests:
             memory: "128Mi"
-            cpu: "100m"
+            cpu: "50m"  # 降低 CPU 请求以避免资源不足
           limits:
             memory: "512Mi"
             cpu: "500m"

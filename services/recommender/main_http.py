@@ -18,20 +18,30 @@ from app.core.config import settings
 
 def main():
     """启动 HTTP 服务"""
-    app = create_app()
-    
     # 从环境变量读取配置（K8s ConfigMap 使用 HTTP_HOST 和 HTTP_PORT）
     host = os.getenv("HTTP_HOST", settings.host)
     port = int(os.getenv("HTTP_PORT", str(settings.port)))
     workers = int(os.getenv("HTTP_WORKERS", str(settings.workers if not settings.debug else 1)))
     
-    uvicorn.run(
-        app,
-        host=host,
-        port=port,
-        workers=workers,
-        log_level="info" if not settings.debug else "debug"
-    )
+    # 当使用 workers > 1 时，uvicorn 需要使用 import string 形式
+    # 使用 app.main:app 作为 import string
+    if workers > 1:
+        uvicorn.run(
+            "app.main:app",  # 使用 import string 形式
+            host=host,
+            port=port,
+            workers=workers,
+            log_level="info" if not settings.debug else "debug"
+        )
+    else:
+        # 单 worker 模式可以直接传递 app 对象
+        app = create_app()
+        uvicorn.run(
+            app,
+            host=host,
+            port=port,
+            log_level="info" if not settings.debug else "debug"
+        )
 
 
 if __name__ == "__main__":
