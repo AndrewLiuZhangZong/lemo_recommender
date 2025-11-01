@@ -223,13 +223,6 @@ services:
     ports:
       - "8081:8081"  # Flink Web UI
       - "6123:6123"  # JobManager RPC
-    environment:
-      # Flink 配置（通过环境变量传递，启动脚本会写入配置文件）
-      JOBMANAGER_RPC_ADDRESS: flink
-      JOBMANAGER_MEMORY_SIZE: 1600m
-      TASKMANAGER_MEMORY_SIZE: 1728m
-      TASKMANAGER_SLOTS: "4"
-      PARALLELISM_DEFAULT: "2"
     volumes:
       - flink_data:/opt/flink/data
       - flink_checkpoints:/opt/flink/checkpoints
@@ -240,12 +233,12 @@ services:
       - -c
       - |
         # 添加运行时配置
-        cat >> /opt/flink/conf/flink-conf.yaml <<EOF
-        jobmanager.rpc.address: ${JOBMANAGER_RPC_ADDRESS}
-        jobmanager.memory.process.size: ${JOBMANAGER_MEMORY_SIZE}
-        taskmanager.memory.process.size: ${TASKMANAGER_MEMORY_SIZE}
-        taskmanager.numberOfTaskSlots: ${TASKMANAGER_SLOTS}
-        parallelism.default: ${PARALLELISM_DEFAULT}
+        cat >> /opt/flink/conf/flink-conf.yaml <<'EOF'
+        jobmanager.rpc.address: flink
+        jobmanager.memory.process.size: 1600m
+        taskmanager.memory.process.size: 1728m
+        taskmanager.numberOfTaskSlots: 4
+        parallelism.default: 2
         EOF
         
         # 启动 Flink 集群
