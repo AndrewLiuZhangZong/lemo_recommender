@@ -393,14 +393,15 @@ class FlinkJobManager:
         """
         提交 Python 脚本作业
         
-        通过上传 Python 文件并使用 PyFlink 运行
+        注意: Flink REST API 的 /jars/upload 只接受 JAR 文件。
+        Python 作业通过 Kubernetes Job 使用 `flink run -py` 命令提交。
         
         Args:
             template: 作业模板
             request: 提交请求
             
         Returns:
-            Flink Job ID
+            Kubernetes Job 名称（作为作业 ID）
         """
         script_path = template.config.get("script_path")
         if not script_path:
@@ -413,88 +414,89 @@ class FlinkJobManager:
         if "args" in request.job_config:
             args = request.job_config["args"]
         
-        # 1. 获取脚本内容
-        logger.info(f"准备 Python 脚本: {script_path}")
+        parallelism = request.job_config.get("parallelism", template.parallelism)
         
-        if script_path.startswith(('http://', 'https://')):
-            # 从 URL 下载脚本
-            logger.info(f"从 URL 下载脚本: {script_path}")
-            try:
-                download_response = await self.client.get(script_path)
-                download_response.raise_for_status()
-                script_content = download_response.content
-                # 从 URL 中提取文件名
-                script_filename = script_path.split('/')[-1]
-                logger.info(f"✓ 脚本下载成功: {script_filename} ({len(script_content)} bytes)")
-            except Exception as e:
-                raise RuntimeError(f"下载脚本失败: {script_path}, 错误: {e}")
-        else:
-            # 本地文件路径
-            if not os.path.exists(script_path):
-                raise FileNotFoundError(f"脚本文件不存在: {script_path}")
-            
-            logger.info(f"读取本地脚本: {script_path}")
-            async with aiofiles.open(script_path, 'rb') as f:
-                script_content = await f.read()
-            script_filename = os.path.basename(script_path)
+        logger.info(f"准备通过 Kubernetes Job 提交 Python 脚本作业: {script_path}")
         
-        # 2. 上传 Python 脚本到 Flink
-        logger.info(f"上传 Python 脚本到 Flink: {script_filename}")
-        
-        # 构建 multipart form data（Flink 要求 field 名称为 'jarfile'）
-        form = aiohttp.FormData()
-        form.add_field('jarfile',
-                      script_content,
-                      filename=script_filename,
-                      content_type='application/x-java-archive')
-        
-        # 使用 aiohttp 上传文件（httpx 不支持 FormData）
-        async with aiohttp.ClientSession() as session:
-            upload_url = f"{self.flink_rest_url}/jars/upload"
-            async with session.post(upload_url, data=form) as upload_response:
-                upload_response.raise_for_status()
-                upload_result = await upload_response.json()
-        
-        # 获取上传的文件名（Flink 会返回一个临时的 jar ID）
-        filename = upload_result.get("filename")
-        if not filename:
-            raise RuntimeError("上传 Python 脚本失败，未返回文件名")
-        
-        logger.info(f"Python 脚本上传成功: {filename}")
-        
-        # 2. 提交 Python 作业
-        # 构建 PyFlink 运行参数
-        program_args_list = [
-            "-py", filename,
-            "-pym", entry_point if entry_point != "main" else None,
+        # 构建 flink run 命令
+        flink_command = [
+            "/opt/flink/bin/flink", "run",
+            "-t", "remote",
+            "-Djobmanager.rpc.address=flink",
+            f"-p {parallelism}",
+            "-py", script_path,
         ]
         
-        # 过滤 None 值
-        program_args_list = [arg for arg in program_args_list if arg is not None]
+        # 添加入口点（如果指定）
+        if entry_point and entry_point != "main":
+            flink_command.extend(["-pym", entry_point])
         
         # 添加用户参数
         if args:
-            program_args_list.extend(args)
+            flink_command.extend(args)
         
-        # 提交作业
-        run_response = await self.client.post(
-            f"/jars/{filename}/run",
-            json={
-                "programArgs": " ".join(program_args_list),
-                "parallelism": request.job_config.get("parallelism", template.parallelism),
-                "savepointPath": request.savepoint_path
-            }
+        # 创建 Kubernetes Job
+        from kubernetes import client as k8s_client, config as k8s_config
+        
+        try:
+            # 加载 K8s 配置
+            k8s_config.load_incluster_config()
+        except Exception:
+            # 如果不在集群内，尝试加载本地配置
+            try:
+                k8s_config.load_kube_config()
+            except Exception as e:
+                raise RuntimeError(f"无法加载 Kubernetes 配置: {e}")
+        
+        batch_v1 = k8s_client.BatchV1Api()
+        
+        # 生成唯一的 Job 名称
+        job_name = f"flink-py-{request.job_id.replace('_', '-')}"[:63]  # K8s 名称限制
+        
+        # 构建 Job 配置
+        job = k8s_client.V1Job(
+            metadata=k8s_client.V1ObjectMeta(
+                name=job_name,
+                labels={
+                    "app": "flink-python-job",
+                    "job-id": request.job_id,
+                }
+            ),
+            spec=k8s_client.V1JobSpec(
+                template=k8s_client.V1PodTemplateSpec(
+                    metadata=k8s_client.V1ObjectMeta(
+                        labels={
+                            "app": "flink-python-job",
+                            "job-id": request.job_id,
+                        }
+                    ),
+                    spec=k8s_client.V1PodSpec(
+                        restart_policy="Never",
+                        containers=[
+                            k8s_client.V1Container(
+                                name="flink-python-submitter",
+                                image="registry.cn-beijing.aliyuncs.com/lemo_zls/flink-python:latest",
+                                command=["/bin/bash", "-c"],
+                                args=[" ".join(flink_command)],
+                                env=[
+                                    k8s_client.V1EnvVar(name="FLINK_REST_URL", value=self.flink_rest_url),
+                                ],
+                            )
+                        ],
+                    )
+                ),
+                backoff_limit=1,  # 失败后重试次数
+            )
         )
-        run_response.raise_for_status()
         
-        result = run_response.json()
-        job_id = result.get("jobid")
-        
-        if not job_id:
-            raise RuntimeError("提交作业失败，未返回 Job ID")
-        
-        logger.info(f"✓ Python 脚本作业提交成功: {job_id}")
-        return job_id
+        # 提交 Job
+        namespace = "lemo-dev"  # TODO: 从配置读取
+        try:
+            batch_v1.create_namespaced_job(namespace=namespace, body=job)
+            logger.info(f"✓ Kubernetes Job 创建成功: {job_name}")
+            return job_name
+        except Exception as e:
+            raise RuntimeError(f"创建 Kubernetes Job 失败: {e}")
     
     async def _submit_jar(
         self,
