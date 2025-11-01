@@ -22,7 +22,7 @@ class CollaborativeFilteringRecall(RecallStrategy):
     ) -> List[str]:
         """基于用户协同过滤召回"""
         
-        if not self.db:
+        if self.db is None:
             return []
         
         try:
@@ -109,7 +109,7 @@ class ItemBasedCFRecall(RecallStrategy):
     ) -> List[str]:
         """基于物品协同过滤召回"""
         
-        if not self.db:
+        if self.db is None:
             return []
         
         try:

@@ -156,7 +156,7 @@ class JobTemplateCreate(BaseModel):
 class FlinkJobSubmitRequest(BaseModel):
     """提交 Flink 作业请求"""
     template_id: str
-    job_id: str
+    job_id: Optional[str] = None  # 如果不指定，自动生成
     job_name: str
     job_config: Dict[str, Any] = Field(default_factory=dict)  # 运行时参数覆盖模板配置
     flink_cluster_url: Optional[str] = None  # 如果不指定，使用默认配置

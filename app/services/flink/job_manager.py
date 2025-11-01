@@ -169,26 +169,53 @@ class FlinkJobManager:
         Returns:
             创建的模板
         """
-        db = mongodb.get_database()
-        collection = db.job_templates
-        
-        # 检查是否已存在
-        existing = await collection.find_one({"template_id": template_data.template_id})
-        if existing:
-            raise ValueError(f"模板已存在: {template_data.template_id}")
-        
-        # 创建模板
-        template = JobTemplate(
-            **template_data.dict(),
-            status="active",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        
-        await collection.insert_one(template.dict())
-        logger.info(f"创建作业模板: {template_data.template_id}")
-        
-        return template
+        try:
+            db = mongodb.get_database()
+            if db is None:
+                raise RuntimeError("MongoDB 数据库连接未建立")
+            
+            collection = db.job_templates
+            logger.info(f"准备创建作业模板: template_id={template_data.template_id}, name={template_data.name}")
+            
+            # 检查是否已存在
+            existing = await collection.find_one({"template_id": template_data.template_id})
+            if existing:
+                logger.warning(f"模板已存在: {template_data.template_id}")
+                raise ValueError(f"模板已存在: {template_data.template_id}")
+            
+            # 创建模板
+            template = JobTemplate(
+                **template_data.dict(),
+                status="active",
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            
+            # 转换为字典并插入
+            template_dict = template.dict()
+            logger.info(f"准备插入模板数据到 MongoDB: {template_dict}")
+            
+            result = await collection.insert_one(template_dict)
+            logger.info(f"MongoDB 插入结果: inserted_id={result.inserted_id}, template_id={template_data.template_id}")
+            
+            # 验证是否插入成功
+            if not result.inserted_id:
+                raise RuntimeError("MongoDB 插入操作失败，未返回 inserted_id")
+            
+            # 验证数据是否真的存在
+            verify = await collection.find_one({"template_id": template_data.template_id})
+            if not verify:
+                raise RuntimeError(f"模板插入后验证失败: template_id={template_data.template_id}")
+            
+            logger.info(f"✓ 作业模板创建成功: template_id={template_data.template_id}, name={template_data.name}")
+            return template
+            
+        except ValueError:
+            # 参数错误，直接抛出
+            raise
+        except Exception as e:
+            logger.error(f"创建作业模板失败: {e}", exc_info=True)
+            raise RuntimeError(f"创建作业模板失败: {str(e)}") from e
     
     async def get_job_template(self, template_id: str) -> Optional[JobTemplate]:
         """获取作业模板"""
@@ -241,40 +268,116 @@ class FlinkJobManager:
         if template.status != "active":
             raise ValueError(f"模板不可用: {request.template_id} (status: {template.status})")
         
-        # 2. 根据模板类型提交作业
-        if template.job_type == JobTemplateType.PYTHON_SCRIPT:
-            flink_job_id = await self._submit_python_script(template, request)
-        elif template.job_type == JobTemplateType.JAR:
-            flink_job_id = await self._submit_jar(template, request)
-        elif template.job_type == JobTemplateType.SQL:
-            flink_job_id = await self._submit_sql(template, request)
-        elif template.job_type == JobTemplateType.PYTHON_FLINK:
-            flink_job_id = await self._submit_python_flink(template, request)
-        else:
-            raise ValueError(f"不支持的作业类型: {template.job_type}")
+        # 2. 生成 job_id（如果没有指定）
+        job_id = request.job_id
+        if not job_id:
+            # 生成格式：template_id_timestamp
+            import time
+            job_id = f"{request.template_id}_{int(time.time()*1000)}"
+            logger.info(f"自动生成 job_id: {job_id}")
         
-        # 3. 保存作业实例到 MongoDB
+        # 3. 先创建作业实例记录（即使提交失败也保存记录）
         flink_job = FlinkJob(
-            job_id=request.job_id,
+            job_id=job_id,
             job_name=request.job_name,
             template_id=request.template_id,
-            flink_job_id=flink_job_id,
+            flink_job_id=None,  # 初始为空，提交成功后再更新
             flink_cluster_url=request.flink_cluster_url or self.flink_rest_url,
-            status=JobStatus.RUNNING,
+            status=JobStatus.CREATED,  # 初始状态为 CREATED
             job_config={
                 **template.config,
                 **request.job_config
             },
             submitted_by=submitted_by,
             submitted_at=datetime.utcnow().isoformat(),
-            start_time=datetime.utcnow().isoformat()
+            start_time=None  # 提交成功后再设置
         )
         
         db = mongodb.get_database()
+        if db is None:
+            raise RuntimeError("MongoDB 数据库连接未建立")
+        
         collection = db.flink_jobs
         await collection.insert_one(flink_job.dict())
+        logger.info(f"创建作业实例记录: {job_id}")
         
-        logger.info(f"提交 Flink 作业: {request.job_id} (Flink Job ID: {flink_job_id})")
+        # 4. 尝试提交到 Flink 集群
+        flink_job_id = None
+        error_message = None
+        try:
+            if template.job_type == JobTemplateType.PYTHON_SCRIPT:
+                flink_job_id = await self._submit_python_script(template, request)
+            elif template.job_type == JobTemplateType.JAR:
+                flink_job_id = await self._submit_jar(template, request)
+            elif template.job_type == JobTemplateType.SQL:
+                flink_job_id = await self._submit_sql(template, request)
+            elif template.job_type == JobTemplateType.PYTHON_FLINK:
+                flink_job_id = await self._submit_python_flink(template, request)
+            else:
+                raise ValueError(f"不支持的作业类型: {template.job_type}")
+            
+            # 提交成功，更新作业状态
+            flink_job.flink_job_id = flink_job_id
+            flink_job.status = JobStatus.RUNNING
+            flink_job.start_time = datetime.utcnow().isoformat()
+            flink_job.error_message = None
+            
+            await collection.update_one(
+                {"job_id": job_id},
+                {
+                    "$set": {
+                        "flink_job_id": flink_job_id,
+                        "status": JobStatus.RUNNING.value,
+                        "start_time": flink_job.start_time,
+                        "error_message": None,
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+            
+            logger.info(f"✓ Flink 作业提交成功: {job_id} (Flink Job ID: {flink_job_id})")
+            
+        except NotImplementedError as e:
+            # 作业类型暂未实现，更新状态为失败
+            error_message = str(e)
+            flink_job.status = JobStatus.FAILED
+            flink_job.error_message = error_message
+            
+            await collection.update_one(
+                {"job_id": job_id},
+                {
+                    "$set": {
+                        "status": JobStatus.FAILED.value,
+                        "error_message": error_message,
+                        "end_time": datetime.utcnow().isoformat(),
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+            
+            logger.warning(f"⚠️ Flink 作业提交失败（功能未实现）: {job_id}, 错误: {error_message}")
+            
+        except Exception as e:
+            # 其他错误，更新状态为失败
+            error_message = str(e)
+            flink_job.status = JobStatus.FAILED
+            flink_job.error_message = error_message
+            
+            await collection.update_one(
+                {"job_id": job_id},
+                {
+                    "$set": {
+                        "status": JobStatus.FAILED.value,
+                        "error_message": error_message,
+                        "end_time": datetime.utcnow().isoformat(),
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+            
+            logger.error(f"✗ Flink 作业提交失败: {job_id}, 错误: {error_message}", exc_info=True)
+            # 抛出异常，让上层处理
+            raise
         
         return flink_job
     

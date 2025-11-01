@@ -48,6 +48,10 @@ data:
   # gRPC Server
   GRPC_HOST: "0.0.0.0"
   GRPC_PORT: "10072"
+  
+  # Flink 集群配置
+  FLINK_REST_URL: "http://111.228.39.41:8081"
+  FLINK_REST_TIMEOUT: "30"
 ---
 apiVersion: apps/v1
 kind: Deployment
