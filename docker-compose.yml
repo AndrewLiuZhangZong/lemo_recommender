@@ -220,30 +220,30 @@ services:
     #   context: .
     #   dockerfile: Dockerfile.flink-python
     container_name: lemo-flink
-    user: root  # 使用 root 用户避免权限问题
     ports:
       - "8081:8081"  # Flink Web UI
       - "6123:6123"  # JobManager RPC
-    environment:
-      FLINK_PROPERTIES: |
-        jobmanager.rpc.address: flink
-        jobmanager.memory.process.size: 1600m
-        taskmanager.memory.process.size: 1728m
-        taskmanager.numberOfTaskSlots: 4
-        parallelism.default: 2
-        python.client.executable: python3
-        python.executable: python3
     volumes:
       - flink_data:/opt/flink/data
       - flink_checkpoints:/opt/flink/checkpoints
       - flink_savepoints:/opt/flink/savepoints
       - ./flink_jobs:/opt/flink/usrlib  # 挂载 Python 作业目录
-    command: >
-      bash -c "
-      chmod -R 755 /opt/flink/conf &&
-      ./bin/start-cluster.sh &&
-      tail -f /opt/flink/log/*.log
-      "
+    command:
+      - /bin/bash
+      - -c
+      - |
+        # 添加配置到 flink-conf.yaml（避免权限问题，使用追加方式）
+        cat >> /opt/flink/conf/flink-conf.yaml <<'FLINKCONF'
+        jobmanager.rpc.address: flink
+        jobmanager.memory.process.size: 1600m
+        taskmanager.memory.process.size: 1728m
+        taskmanager.numberOfTaskSlots: 4
+        parallelism.default: 2
+        FLINKCONF
+        # 启动集群
+        ./bin/start-cluster.sh
+        # 保持运行
+        tail -f /opt/flink/log/*.log
     networks:
       - lemo-network
     healthcheck:
