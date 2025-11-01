@@ -450,8 +450,25 @@ class FlinkJobManager:
         
         batch_v1 = k8s_client.BatchV1Api()
         
-        # 生成唯一的 Job 名称
-        job_name = f"flink-py-{request.job_id.replace('_', '-')}"[:63]  # K8s 名称限制
+        # 生成唯一的 Job 名称（符合 K8s RFC 1123 规范）
+        # 1. 替换下划线为连字符
+        # 2. 转换为小写
+        # 3. 移除开头/结尾的非字母数字字符
+        # 4. 限制长度为 63 字符
+        import re
+        safe_job_id = request.job_id.replace('_', '-').lower()
+        safe_job_id = re.sub(r'^[^a-z0-9]+|[^a-z0-9]+$', '', safe_job_id)  # 移除开头/结尾的非字母数字
+        safe_job_id = re.sub(r'[^a-z0-9-]+', '-', safe_job_id)  # 替换其他非法字符为连字符
+        job_name = f"flink-py-{safe_job_id}"[:63]
+        
+        # 确保名称以字母数字结尾（防止截断后以 '-' 结尾）
+        job_name = re.sub(r'-+$', '', job_name)
+        if not job_name or job_name == 'flink-py':
+            # 如果处理后名称无效，使用时间戳
+            import time
+            job_name = f"flink-py-{int(time.time())}"
+        
+        logger.info(f"生成 K8s Job 名称: {job_name} (原始 job_id: {request.job_id})")
         
         # 构建 Job 配置
         job = k8s_client.V1Job(
@@ -459,7 +476,7 @@ class FlinkJobManager:
                 name=job_name,
                 labels={
                     "app": "flink-python-job",
-                    "job-id": request.job_id,
+                    "job-id": safe_job_id,  # label 也需要符合规范
                 }
             ),
             spec=k8s_client.V1JobSpec(
@@ -467,7 +484,7 @@ class FlinkJobManager:
                     metadata=k8s_client.V1ObjectMeta(
                         labels={
                             "app": "flink-python-job",
-                            "job-id": request.job_id,
+                            "job-id": safe_job_id,  # label 也需要符合规范
                         }
                     ),
                     spec=k8s_client.V1PodSpec(
