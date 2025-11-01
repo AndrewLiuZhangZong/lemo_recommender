@@ -232,13 +232,21 @@ services:
       - /bin/bash
       - -c
       - |
-        # 添加运行时配置
-        cat >> /opt/flink/conf/flink-conf.yaml <<'EOF'
+        # 备份原配置
+        cp /opt/flink/conf/flink-conf.yaml /opt/flink/conf/flink-conf.yaml.bak
+        
+        # 重新生成配置文件（确保格式正确）
+        cat > /opt/flink/conf/flink-conf.yaml <<'EOF'
+        # Flink 配置文件
         jobmanager.rpc.address: flink
         jobmanager.memory.process.size: 1600m
         taskmanager.memory.process.size: 1728m
         taskmanager.numberOfTaskSlots: 4
         parallelism.default: 2
+        python.client.executable: python3
+        python.executable: python3
+        blob.server.port: 6124
+        query.server.port: 6125
         EOF
         
         # 启动 Flink 集群
