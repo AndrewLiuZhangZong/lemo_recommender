@@ -423,7 +423,7 @@ class FlinkJobManager:
             "/opt/flink/bin/flink", "run",
             "-t", "remote",
             "-Djobmanager.rpc.address=flink",
-            f"-p {parallelism}",
+            "-p", str(parallelism),  # 拆分为两个参数
             "-py", script_path,
         ]
         
@@ -434,6 +434,8 @@ class FlinkJobManager:
         # 添加用户参数
         if args:
             flink_command.extend(args)
+        
+        logger.info(f"Flink 命令: {' '.join(flink_command)}")
         
         # 创建 Kubernetes Job
         from kubernetes import client as k8s_client, config as k8s_config
@@ -489,10 +491,13 @@ class FlinkJobManager:
                     ),
                     spec=k8s_client.V1PodSpec(
                         restart_policy="Never",
+                        service_account_name="lemo-service-recommender-sa",  # 使用现有 ServiceAccount
+                        image_pull_secrets=[k8s_client.V1LocalObjectReference(name="regcred")],  # ACR 镜像拉取凭证
                         containers=[
                             k8s_client.V1Container(
                                 name="flink-python-submitter",
                                 image="registry.cn-beijing.aliyuncs.com/lemo_zls/flink-python:latest",
+                                image_pull_policy="IfNotPresent",
                                 command=["/bin/bash", "-c"],
                                 args=[" ".join(flink_command)],
                                 env=[
