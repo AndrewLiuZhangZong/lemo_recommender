@@ -55,12 +55,16 @@ ENV PYFLINK_CLIENT_EXECUTABLE=python3
 ENV PYTHON_HOME=/usr
 ENV PATH="${PYTHON_HOME}/bin:${PATH}"
 
-# 配置 Flink Python 支持
+# 配置 Flink Python 支持（添加基础配置，其他配置在运行时通过 docker-compose 添加）
 RUN echo "python.client.executable: python3" >> /opt/flink/conf/flink-conf.yaml \
     && echo "python.executable: python3" >> /opt/flink/conf/flink-conf.yaml
 
-# 切换回 flink 用户
-USER flink
+# 设置配置文件权限，允许修改
+RUN chmod -R 755 /opt/flink/conf \
+    && chown -R flink:flink /opt/flink
+
+# 保持 root 用户（不切换回 flink），以便 docker-compose 中灵活控制
+# USER flink  # 注释掉，让 docker-compose 决定使用哪个用户
 
 # 设置工作目录
 WORKDIR /opt/flink
@@ -69,6 +73,6 @@ WORKDIR /opt/flink
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8081/overview || exit 1
 
-# 默认命令（启动 JobManager）
-CMD ["jobmanager"]
+# 默认命令（使用启动脚本而不是直接启动 jobmanager）
+CMD ["/bin/bash"]
 
