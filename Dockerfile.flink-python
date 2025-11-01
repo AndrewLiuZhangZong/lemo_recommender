@@ -59,12 +59,11 @@ ENV PATH="${PYTHON_HOME}/bin:${PATH}"
 RUN echo "python.client.executable: python3" >> /opt/flink/conf/flink-conf.yaml \
     && echo "python.executable: python3" >> /opt/flink/conf/flink-conf.yaml
 
-# 设置配置文件权限，允许修改
-RUN chmod -R 755 /opt/flink/conf \
-    && chown -R flink:flink /opt/flink
+# 设置配置文件权限，允许 root 和任何用户都可以修改
+RUN chmod -R 777 /opt/flink/conf
 
-# 保持 root 用户（不切换回 flink），以便 docker-compose 中灵活控制
-# USER flink  # 注释掉，让 docker-compose 决定使用哪个用户
+# 保持 root 用户（不切换回 flink），默认使用 root 运行
+# USER flink  # 已注释，容器默认使用 root 用户
 
 # 设置工作目录
 WORKDIR /opt/flink
