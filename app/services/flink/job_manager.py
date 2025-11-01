@@ -389,15 +389,96 @@ class FlinkJobManager:
         """
         提交 Python 脚本作业
         
-        注意：Flink 不支持直接提交 Python 脚本，需要：
-        1. 打包成 JAR（使用 pyflink-submit）
-        2. 或者使用 PyFlink Table API（SQL）
+        通过上传 Python 文件并使用 PyFlink 运行
         
-        这里先实现一个简化版本，实际应该使用 pyflink-submit
+        Args:
+            template: 作业模板
+            request: 提交请求
+            
+        Returns:
+            Flink Job ID
         """
-        # TODO: 实现 Python 脚本提交逻辑
-        # 可以使用 pyflink-submit 或打包成 JAR
-        raise NotImplementedError("Python 脚本提交功能待实现（需要 pyflink-submit 或打包成 JAR）")
+        script_path = template.config.get("script_path")
+        if not script_path:
+            raise ValueError("脚本路径未配置")
+        
+        entry_point = template.config.get("entry_point", "main")
+        args = template.config.get("args", [])
+        
+        # 合并运行时参数
+        if "args" in request.job_config:
+            args = request.job_config["args"]
+        
+        # 检查脚本文件是否存在
+        import os
+        import aiofiles
+        
+        if not os.path.exists(script_path):
+            raise FileNotFoundError(f"脚本文件不存在: {script_path}")
+        
+        # 1. 上传 Python 脚本
+        logger.info(f"上传 Python 脚本: {script_path}")
+        
+        # 读取脚本内容
+        async with aiofiles.open(script_path, 'rb') as f:
+            script_content = await f.read()
+        
+        # 构建 multipart form data
+        import aiohttp
+        form = aiohttp.FormData()
+        form.add_field('file',
+                      script_content,
+                      filename=os.path.basename(script_path),
+                      content_type='text/x-python')
+        
+        # 上传文件到 Flink
+        upload_response = await self.client.post(
+            "/jars/upload",
+            data=form
+        )
+        upload_response.raise_for_status()
+        upload_result = upload_response.json()
+        
+        # 获取上传的文件名（Flink 会返回一个临时的 jar ID）
+        filename = upload_result.get("filename")
+        if not filename:
+            raise RuntimeError("上传 Python 脚本失败，未返回文件名")
+        
+        logger.info(f"Python 脚本上传成功: {filename}")
+        
+        # 2. 提交 Python 作业
+        # 构建 PyFlink 运行参数
+        program_args_list = [
+            "-py", filename,
+            "-pym", entry_point if entry_point != "main" else None,
+        ]
+        
+        # 过滤 None 值
+        program_args_list = [arg for arg in program_args_list if arg is not None]
+        
+        # 添加用户参数
+        if args:
+            program_args_list.extend(args)
+        
+        # 提交作业
+        run_response = await self.client.post(
+            f"/jars/{filename}/run",
+            json={
+                "programArgs": " ".join(program_args_list),
+                "parallelism": request.job_config.get("parallelism", template.parallelism),
+                "savepointPath": request.savepoint_path
+            }
+        )
+        run_response.raise_for_status()
+        
+        result = run_response.json()
+        job_id = result.get("jobid")
+        
+        if not job_id:
+            raise RuntimeError("提交作业失败，未返回 Job ID")
+        
+        logger.info(f"✓ Python 脚本作业提交成功: {job_id}")
+        return job_id
     
     async def _submit_jar(
         self,
@@ -450,18 +531,238 @@ class FlinkJobManager:
         template: JobTemplate,
         request: FlinkJobSubmitRequest
     ) -> str:
-        """提交 SQL 作业"""
-        # TODO: 实现 SQL 提交逻辑
-        raise NotImplementedError("SQL 提交功能待实现")
+        """
+        提交 SQL 作业
+        
+        通过创建临时 PyFlink 脚本来执行 SQL
+        
+        Args:
+            template: 作业模板
+            request: 提交请求
+            
+        Returns:
+            Flink Job ID
+        """
+        sql = template.config.get("sql")
+        sql_file = template.config.get("sql_file")
+        
+        if not sql and not sql_file:
+            raise ValueError("SQL 内容或 SQL 文件路径未配置")
+        
+        # 如果指定了 SQL 文件，读取内容
+        if sql_file:
+            import os
+            import aiofiles
+            
+            if not os.path.exists(sql_file):
+                raise FileNotFoundError(f"SQL 文件不存在: {sql_file}")
+            
+            async with aiofiles.open(sql_file, 'r', encoding='utf-8') as f:
+                sql = await f.read()
+        
+        if not sql:
+            raise ValueError("SQL 内容为空")
+        
+        # 创建临时 PyFlink 脚本来执行 SQL
+        import tempfile
+        import os
+        import aiofiles
+        
+        # 生成 PyFlink Table API 脚本
+        pyflink_script = f'''
+from pyflink.table import EnvironmentSettings, TableEnvironment
+import sys
+
+def main():
+    # 创建 Table Environment
+    env_settings = EnvironmentSettings.in_streaming_mode()
+    table_env = TableEnvironment.create(env_settings)
+    
+    # 设置并行度
+    table_env.get_config().set("parallelism.default", "{template.parallelism}")
+    
+    # 执行 SQL
+    sql_statements = """
+{sql}
+"""
+    
+    # 分割多个 SQL 语句并执行
+    for statement in sql_statements.strip().split(';'):
+        statement = statement.strip()
+        if statement:
+            print(f"Executing SQL: {{statement[:100]}}...")
+            try:
+                result = table_env.execute_sql(statement)
+                print(f"✓ SQL executed successfully")
+            except Exception as e:
+                print(f"✗ SQL execution failed: {{e}}")
+                raise
+    
+    print("All SQL statements executed successfully")
+
+if __name__ == '__main__':
+    main()
+'''
+        
+        # 写入临时文件
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as tmp:
+            tmp.write(pyflink_script)
+            temp_script_path = tmp.name
+        
+        try:
+            # 上传并提交临时脚本
+            logger.info(f"创建临时 PyFlink SQL 脚本: {temp_script_path}")
+            
+            async with aiofiles.open(temp_script_path, 'rb') as f:
+                script_content = await f.read()
+            
+            # 构建 multipart form data
+            import aiohttp
+            form = aiohttp.FormData()
+            form.add_field('file',
+                          script_content,
+                          filename='sql_job.py',
+                          content_type='text/x-python')
+            
+            # 上传文件到 Flink
+            upload_response = await self.client.post(
+                "/jars/upload",
+                data=form
+            )
+            upload_response.raise_for_status()
+            upload_result = upload_response.json()
+            
+            filename = upload_result.get("filename")
+            if not filename:
+                raise RuntimeError("上传 SQL 脚本失败，未返回文件名")
+            
+            logger.info(f"SQL 脚本上传成功: {filename}")
+            
+            # 提交作业
+            run_response = await self.client.post(
+                f"/jars/{filename}/run",
+                json={
+                    "programArgs": "",
+                    "parallelism": request.job_config.get("parallelism", template.parallelism),
+                    "savepointPath": request.savepoint_path
+                }
+            )
+            run_response.raise_for_status()
+            
+            result = run_response.json()
+            job_id = result.get("jobid")
+            
+            if not job_id:
+                raise RuntimeError("提交 SQL 作业失败，未返回 Job ID")
+            
+            logger.info(f"✓ SQL 作业提交成功: {job_id}")
+            return job_id
+            
+        finally:
+            # 清理临时文件
+            try:
+                os.unlink(temp_script_path)
+            except Exception as e:
+                logger.warning(f"清理临时文件失败: {e}")
     
     async def _submit_python_flink(
         self,
         template: JobTemplate,
         request: FlinkJobSubmitRequest
     ) -> str:
-        """提交 PyFlink 作业"""
-        # TODO: 实现 PyFlink 提交逻辑
-        raise NotImplementedError("PyFlink 提交功能待实现")
+        """
+        提交 PyFlink 作业
+        
+        PyFlink 作业与 Python 脚本类似，但使用 PyFlink API
+        
+        Args:
+            template: 作业模板
+            request: 提交请求
+            
+        Returns:
+            Flink Job ID
+        """
+        script_path = template.config.get("script_path")
+        if not script_path:
+            raise ValueError("PyFlink 脚本路径未配置")
+        
+        python_env = template.config.get("python_env")
+        entry_point = template.config.get("entry_point", "main")
+        args = template.config.get("args", [])
+        
+        # 合并运行时参数
+        if "args" in request.job_config:
+            args = request.job_config["args"]
+        
+        # 检查脚本文件是否存在
+        import os
+        import aiofiles
+        
+        if not os.path.exists(script_path):
+            raise FileNotFoundError(f"PyFlink 脚本文件不存在: {script_path}")
+        
+        # 1. 上传 PyFlink 脚本
+        logger.info(f"上传 PyFlink 脚本: {script_path}")
+        
+        async with aiofiles.open(script_path, 'rb') as f:
+            script_content = await f.read()
+        
+        # 构建 multipart form data
+        import aiohttp
+        form = aiohttp.FormData()
+        form.add_field('file',
+                      script_content,
+                      filename=os.path.basename(script_path),
+                      content_type='text/x-python')
+        
+        # 上传文件到 Flink
+        upload_response = await self.client.post(
+            "/jars/upload",
+            data=form
+        )
+        upload_response.raise_for_status()
+        upload_result = upload_response.json()
+        
+        filename = upload_result.get("filename")
+        if not filename:
+            raise RuntimeError("上传 PyFlink 脚本失败，未返回文件名")
+        
+        logger.info(f"PyFlink 脚本上传成功: {filename}")
+        
+        # 2. 构建运行参数
+        program_args_list = ["-py", filename]
+        
+        # 如果指定了 Python 环境
+        if python_env:
+            program_args_list.extend(["-pyexec", python_env])
+        
+        # 如果指定了入口点模块
+        if entry_point and entry_point != "main":
+            program_args_list.extend(["-pym", entry_point])
+        
+        # 添加用户参数
+        if args:
+            program_args_list.extend(args)
+        
+        # 3. 提交 PyFlink 作业
+        run_response = await self.client.post(
+            f"/jars/{filename}/run",
+            json={
+                "programArgs": " ".join(program_args_list),
+                "parallelism": request.job_config.get("parallelism", template.parallelism),
+                "savepointPath": request.savepoint_path
+            }
+        )
+        run_response.raise_for_status()
+        
+        result = run_response.json()
+        job_id = result.get("jobid")
+        
+        if not job_id:
+            raise RuntimeError("提交 PyFlink 作业失败，未返回 Job ID")
+        
+        logger.info(f"✓ PyFlink 作业提交成功: {job_id}")
+        return job_id
     
     async def _upload_jar_if_needed(self, jar_path: str) -> str:
         """
@@ -471,11 +772,59 @@ class FlinkJobManager:
             jar_path: JAR 文件路径
             
         Returns:
-            JAR ID
+            JAR ID（文件名）
         """
-        # TODO: 实现 JAR 上传逻辑
-        # 检查 JAR 是否已上传，如果没有则上传
-        raise NotImplementedError("JAR 上传功能待实现")
+        import os
+        import aiofiles
+        import aiohttp
+        
+        # 检查 JAR 文件是否存在
+        if not os.path.exists(jar_path):
+            raise FileNotFoundError(f"JAR 文件不存在: {jar_path}")
+        
+        jar_filename = os.path.basename(jar_path)
+        
+        # 1. 检查 JAR 是否已上传
+        try:
+            list_response = await self.client.get("/jars")
+            list_response.raise_for_status()
+            jars_data = list_response.json()
+            
+            # 查找已上传的 JAR
+            for jar in jars_data.get("files", []):
+                if jar.get("name") == jar_filename or jar.get("id") == jar_filename:
+                    logger.info(f"JAR 已存在于 Flink 集群: {jar_filename}")
+                    return jar.get("id") or jar_filename
+        except Exception as e:
+            logger.warning(f"检查已上传 JAR 失败: {e}")
+        
+        # 2. 上传 JAR
+        logger.info(f"上传 JAR 文件: {jar_path}")
+        
+        async with aiofiles.open(jar_path, 'rb') as f:
+            jar_content = await f.read()
+        
+        # 构建 multipart form data
+        form = aiohttp.FormData()
+        form.add_field('jarfile',
+                      jar_content,
+                      filename=jar_filename,
+                      content_type='application/java-archive')
+        
+        upload_response = await self.client.post(
+            "/jars/upload",
+            data=form
+        )
+        upload_response.raise_for_status()
+        upload_result = upload_response.json()
+        
+        # 获取上传的文件名/ID
+        filename = upload_result.get("filename")
+        if not filename:
+            raise RuntimeError("上传 JAR 失败，未返回文件名")
+        
+        logger.info(f"✓ JAR 上传成功: {filename}")
+        return filename
     
     async def stop_job(self, job_id: str, force: bool = False) -> Dict[str, Any]:
         """
