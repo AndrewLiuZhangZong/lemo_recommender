@@ -441,12 +441,12 @@ class FlinkJobManager:
         # 2. 上传 Python 脚本到 Flink
         logger.info(f"上传 Python 脚本到 Flink: {script_filename}")
         
-        # 构建 multipart form data
+        # 构建 multipart form data（Flink 要求 field 名称为 'jarfile'）
         form = aiohttp.FormData()
-        form.add_field('file',
+        form.add_field('jarfile',
                       script_content,
                       filename=script_filename,
-                      content_type='text/x-python')
+                      content_type='application/x-java-archive')
         
         # 使用 aiohttp 上传文件（httpx 不支持 FormData）
         async with aiohttp.ClientSession() as session:
@@ -637,12 +637,12 @@ if __name__ == '__main__':
             async with aiofiles.open(temp_script_path, 'rb') as f:
                 script_content = await f.read()
             
-            # 构建 multipart form data
+            # 构建 multipart form data（Flink 要求 field 名称为 'jarfile'）
             form = aiohttp.FormData()
-            form.add_field('file',
+            form.add_field('jarfile',
                           script_content,
                           filename='sql_job.py',
-                          content_type='text/x-python')
+                          content_type='application/x-java-archive')
             
             # 使用 aiohttp 上传文件
             async with aiohttp.ClientSession() as session:
@@ -741,12 +741,12 @@ if __name__ == '__main__':
         # 2. 上传 PyFlink 脚本到 Flink
         logger.info(f"上传 PyFlink 脚本到 Flink: {script_filename}")
         
-        # 构建 multipart form data
+        # 构建 multipart form data（Flink 要求 field 名称为 'jarfile'）
         form = aiohttp.FormData()
-        form.add_field('file',
+        form.add_field('jarfile',
                       script_content,
                       filename=script_filename,
-                      content_type='text/x-python')
+                      content_type='application/x-java-archive')
         
         # 使用 aiohttp 上传文件
         async with aiohttp.ClientSession() as session:
