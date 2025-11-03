@@ -28,6 +28,8 @@ from app.models.flink_job_template import (
     JobTemplateCreate, FlinkJobSubmitRequest, JobTemplateType, JobStatus
 )
 
+logger = logging.getLogger(__name__)
+
 
 class FlinkJobServicer(flink_job_pb2_grpc.FlinkJobServiceServicer):
     """Flink 作业管理 gRPC 服务"""
