@@ -2,11 +2,19 @@
 #
 # Flink Kubernetes Operator 安装脚本
 # 
-# 执行位置：服务器2 (K8s 服务器)
+# 执行位置：服务器2 (K8s 服务器 117.72.196.41)
 # 执行用户：root 或有 kubectl 权限的用户
+#
+# 使用方法：
+#   bash scripts/install_flink_operator.sh
 #
 
 set -e
+
+echo "========================================"
+echo "Flink Kubernetes Operator 安装"
+echo "========================================"
+echo ""
 
 # 自动检测 kubeconfig 路径
 if [ -f "/root/k3s-jd-config.yaml" ]; then
@@ -27,9 +35,19 @@ fi
 echo "使用 kubeconfig: $KUBECONFIG"
 export KUBECONFIG
 
-echo "========================================"
-echo "Flink Kubernetes Operator 安装脚本"
-echo "========================================"
+# 验证 kubectl 连接
+echo ""
+echo "验证 K8s 连接..."
+kubectl get nodes || {
+    echo "✗ 无法连接到 K8s 集群"
+    echo "请检查："
+    echo "  1. kubeconfig 文件是否正确"
+    echo "  2. K8s 集群是否运行"
+    echo "  3. 网络连接是否正常"
+    exit 1
+}
+echo "✓ K8s 连接正常"
+
 echo ""
 
 # 1. 安装 cert-manager
@@ -42,10 +60,20 @@ echo "使用阿里云镜像加速..."
 CERT_MANAGER_VERSION="v1.8.2"
 CERT_MANAGER_URL="https://ghproxy.com/https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml"
 
+# 检测下载工具
+if command -v curl &> /dev/null; then
+    DOWNLOAD_CMD="curl -fsSL -o"
+elif command -v wget &> /dev/null; then
+    DOWNLOAD_CMD="wget -O"
+else
+    echo "✗ 需要 curl 或 wget"
+    exit 1
+fi
+
 # 下载到本地
-wget -O /tmp/cert-manager.yaml "$CERT_MANAGER_URL" || {
+$DOWNLOAD_CMD /tmp/cert-manager.yaml "$CERT_MANAGER_URL" || {
     echo "⚠️  从镜像源下载失败，尝试直接访问 GitHub..."
-    wget -O /tmp/cert-manager.yaml "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml" || {
+    $DOWNLOAD_CMD /tmp/cert-manager.yaml "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml" || {
         echo "✗ 下载 cert-manager 失败"
         exit 1
     }
@@ -81,12 +109,12 @@ FLINK_OPERATOR_RELEASE="release-${FLINK_OPERATOR_VERSION}"
 echo "下载 Flink Operator manifests..."
 FLINK_OPERATOR_URL="https://ghproxy.com/https://github.com/apache/flink-kubernetes-operator/releases/download/${FLINK_OPERATOR_RELEASE}/flink-kubernetes-operator-${FLINK_OPERATOR_VERSION}.yaml"
 
-wget -O /tmp/flink-kubernetes-operator.yaml "$FLINK_OPERATOR_URL" || {
+$DOWNLOAD_CMD /tmp/flink-kubernetes-operator.yaml "$FLINK_OPERATOR_URL" || {
     echo "⚠️  从镜像源下载失败，尝试直接访问 GitHub..."
-    wget -O /tmp/flink-kubernetes-operator.yaml \
+    $DOWNLOAD_CMD /tmp/flink-kubernetes-operator.yaml \
         "https://github.com/apache/flink-kubernetes-operator/releases/download/${FLINK_OPERATOR_RELEASE}/flink-kubernetes-operator-${FLINK_OPERATOR_VERSION}.yaml" || {
         echo "⚠️  GitHub 访问失败，尝试从 Apache 官网下载..."
-        wget -O /tmp/flink-kubernetes-operator.yaml \
+        $DOWNLOAD_CMD /tmp/flink-kubernetes-operator.yaml \
             "https://archive.apache.org/dist/flink/flink-kubernetes-operator-${FLINK_OPERATOR_VERSION}/flink-kubernetes-operator-${FLINK_OPERATOR_VERSION}.yaml" || {
             echo "✗ 所有下载源均失败"
             exit 1
@@ -127,9 +155,11 @@ echo "✓ Flink Kubernetes Operator 安装成功！"
 echo "========================================"
 echo ""
 echo "验证命令："
+echo "  export KUBECONFIG=$KUBECONFIG"
 echo "  kubectl get pods -n flink-operator-system"
 echo "  kubectl get crd | grep flink"
 echo ""
-echo "下一步：执行阶段2 - 代码改造"
+echo "下一步："
+echo "  bash scripts/deploy_operator_mode.sh  # 部署推荐服务"
 echo ""
 

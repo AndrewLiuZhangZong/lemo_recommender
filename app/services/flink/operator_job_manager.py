@@ -6,10 +6,10 @@ Flink Kubernetes Operator 作业管理器
 from typing import Optional
 from kubernetes import client as k8s_client, config as k8s_config
 from kubernetes.client.rest import ApiException
+from loguru import logger
 
 from app.models.flink_job_template import JobTemplate, FlinkJobSubmitRequest
 from app.services.flink.crd_generator import FlinkCRDGenerator
-from app.utils.logger import logger
 
 
 class OperatorJobManager:
