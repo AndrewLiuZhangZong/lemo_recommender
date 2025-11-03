@@ -442,12 +442,37 @@ class FlinkJobManager:
         if is_remote:
             # 构建下载并执行的命令
             script_filename = script_path.split("/")[-1]
+            
+            # 下载 JAR 文件到 Pod 中
+            jar_download_cmds = ""
+            jar_args_str = ""
+            if jar_files:
+                downloaded_jars = []
+                for i, jar_url in enumerate(jar_files):
+                    # 如果是 URL，下载；如果是路径，尝试从 Maven 仓库下载
+                    if jar_url.startswith("http://") or jar_url.startswith("https://"):
+                        jar_filename = jar_url.split("/")[-1]
+                    else:
+                        # 是路径，提取文件名并从 Maven 下载
+                        jar_filename = jar_url.split("/")[-1]
+                        # 构建 Maven URL（简化版，假设是标准 connector）
+                        if "kafka" in jar_filename:
+                            jar_url = "https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/3.0.2-1.18/flink-sql-connector-kafka-3.0.2-1.18.jar"
+                    
+                    jar_download_cmds += f"echo '下载依赖 JAR: {jar_filename}'\n"
+                    jar_download_cmds += f"wget -q -O /tmp/{jar_filename} {jar_url}\n"
+                    downloaded_jars.append(f"/tmp/{jar_filename}")
+                
+                # 重新构建 base_cmd，使用下载后的 JAR 路径
+                jar_args_str = " ".join([f"--jarfile {jar}" for jar in downloaded_jars])
+                base_cmd = f"/opt/flink/bin/flink run -m {jobmanager_rpc_address} -p {parallelism} {jar_args_str}"
+            
             flink_command_str = f"""
 set -e
 echo "下载 Python 脚本: {script_path}"
 wget -O /tmp/{script_filename} {script_path}
 echo "脚本下载完成"
-echo "开始提交 Flink 作业..."
+{jar_download_cmds}echo "开始提交 Flink 作业..."
 {base_cmd} -py /tmp/{script_filename}
 """
         else:
