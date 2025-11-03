@@ -31,12 +31,9 @@ def main():
     env = StreamExecutionEnvironment.get_execution_environment()
     env.set_parallelism(1)
     
-    # 添加 JAR
-    if all_jars:
-        print(f"\n添加 {len(all_jars)} 个 JAR 到环境...")
-        for jar in all_jars:
-            env.add_jars(f"file://{jar}")
-            print(f"  ✓ 已添加: {os.path.basename(jar)}")
+    # 注意：不需要显式调用 add_jars()
+    # Flink 会自动加载 /opt/flink/usrlib/ 目录的 JAR
+    print(f"\n✓ Flink 会自动加载 usrlib 目录的 {len([j for j in all_jars if 'usrlib' in j])} 个 JAR")
     
     # 创建一个简单的数据流
     print("\n创建数据流...")

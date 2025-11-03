@@ -41,28 +41,20 @@ def main():
     print(f"🚀 启动 Flink 作业: {args.get('job_name', 'Example Job')}")
     print(f"   参数: {args}")
     
-    # 在创建环境之前，先设置 JAR 路径到环境变量
+    # 检查 JAR 依赖（用于日志）
     import glob
     jar_files_usrlib = glob.glob("/opt/flink/usrlib/*.jar")
-    jar_files_tmp = glob.glob("/tmp/flink-jars/*.jar")
-    all_jars = jar_files_usrlib + jar_files_tmp
     
-    if all_jars:
-        print(f"📦 发现 {len(all_jars)} 个 JAR 依赖")
-        # 设置到环境变量，让 PyFlink 在初始化时加载
-        jar_paths = ";".join([f"file://{jar}" for jar in all_jars])
-        os.environ.setdefault("PYFLINK_JAR_PATH", jar_paths)
-        print(f"   设置 PYFLINK_JAR_PATH: {jar_paths}")
+    if jar_files_usrlib:
+        print(f"📦 发现 {len(jar_files_usrlib)} 个 JAR 依赖:")
+        for jar in jar_files_usrlib:
+            print(f"   - {os.path.basename(jar)}")
+        print(f"   ✓ Flink 会自动加载 usrlib 目录的 JAR")
     
     # 创建 Flink 执行环境
+    # 注意：不需要显式调用 add_jars()，Flink 会自动加载 /opt/flink/usrlib/ 的 JAR
     env = StreamExecutionEnvironment.get_execution_environment()
     env.set_parallelism(args.get('parallelism', 1))
-    
-    # 显式添加 JAR 到执行环境
-    if all_jars:
-        for jar_file in all_jars:
-            env.add_jars(f"file://{jar_file}")
-            print(f"   ✓ 已加载: {os.path.basename(jar_file)}")
     
     # 配置 Checkpoint（如果启用）
     if args.get('enable_checkpoint', False):
