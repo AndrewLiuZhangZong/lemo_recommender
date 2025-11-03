@@ -44,13 +44,23 @@ class FlinkJobManager:
         self.flink_rest_url = flink_rest_url or settings.flink_rest_url
         self.timeout = settings.flink_rest_timeout
         
-        # HTTP 客户端
+        # HTTP 客户端（用于查询 Flink REST API）
         self.client = httpx.AsyncClient(
             base_url=self.flink_rest_url,
             timeout=self.timeout
         )
         
-        logger.info(f"初始化 FlinkJobManager: {self.flink_rest_url}")
+        # 初始化 Flink Kubernetes Operator 管理器
+        from app.services.flink.operator_job_manager import OperatorJobManager
+        self.operator_manager = OperatorJobManager(
+            namespace=getattr(settings, 'flink_operator_namespace', 'lemo-dev'),
+            app_image=getattr(settings, 'flink_app_image', None)
+        )
+        
+        logger.info(f"✓ Flink Operator 模式已启用（业界标准架构）")
+        logger.info(f"  - Namespace: {self.operator_manager.namespace}")
+        logger.info(f"  - App Image: {self.operator_manager.app_image}")
+        logger.info(f"  - REST API: {self.flink_rest_url}")
     
     async def close(self):
         """关闭 HTTP 客户端"""
@@ -305,20 +315,17 @@ class FlinkJobManager:
         await collection.insert_one(flink_job.dict())
         logger.info(f"创建作业实例记录: {job_id}")
         
-        # 4. 尝试提交到 Flink 集群
+        # 4. 通过 Flink Kubernetes Operator 提交作业
         flink_job_id = None
         error_message = None
         try:
-            if template.job_type == JobTemplateType.PYTHON_SCRIPT:
-                flink_job_id = await self._submit_python_script(template, request)
-            elif template.job_type == JobTemplateType.JAR:
-                flink_job_id = await self._submit_jar(template, request)
-            elif template.job_type == JobTemplateType.SQL:
-                flink_job_id = await self._submit_sql(template, request)
-            elif template.job_type == JobTemplateType.PYTHON_FLINK:
-                flink_job_id = await self._submit_python_flink(template, request)
-            else:
-                raise ValueError(f"不支持的作业类型: {template.job_type}")
+            logger.info(f"通过 Flink Operator 提交作业: {template.job_type.value}")
+            
+            # 使用 Operator 提交（支持所有作业类型）
+            flink_job_id = await self.operator_manager.submit_job(template, request)
+            
+            logger.info(f"✓ FlinkDeployment 创建成功: {flink_job_id}")
+            logger.info(f"  作业将由 Flink Operator 自动管理生命周期")
             
             # 提交成功，更新作业状态
             flink_job.flink_job_id = flink_job_id

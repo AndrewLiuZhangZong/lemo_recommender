@@ -45,10 +45,13 @@ class Settings(BaseSettings):
     # Kafka消费者Topic配置
     kafka_item_ingest_topics: List[str] = Field(default=["items-ingest", "vlog-items", "news-items"])
     
-    # Flink 集群配置
+    # Flink 集群配置（仅用于查询作业状态）
     flink_rest_url: str = Field(default="http://localhost:8081", description="Flink REST API 地址")
     flink_rest_timeout: int = Field(default=30, description="Flink REST API 超时时间（秒）")
-    flink_jobmanager_rpc_address: str = Field(default="localhost:6123", description="Flink JobManager RPC 地址（host:port）")
+    
+    # Flink Kubernetes Operator 配置
+    flink_operator_namespace: str = Field(default="lemo-dev", description="Flink Operator 命名空间")
+    flink_app_image: str = Field(default="registry.cn-beijing.aliyuncs.com/lemo_zls/flink-app:latest", description="Flink Application Mode 镜像")
     
     # 外部服务配置
     tenant_service_grpc_url: str = Field(default="localhost:9000")

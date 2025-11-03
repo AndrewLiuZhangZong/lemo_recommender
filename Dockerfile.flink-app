@@ -1,0 +1,44 @@
+# Flink Application Mode Dockerfile
+# 用于 Flink Kubernetes Operator
+#
+# 基于 Flink Python 镜像，添加脚本下载入口点
+
+FROM registry.cn-beijing.aliyuncs.com/lemo_zls/flink-python:latest
+
+# 维护者信息
+LABEL maintainer="Lemo Recommender Team"
+LABEL description="Flink Application Mode image with Python script downloader"
+LABEL version="1.0"
+
+# 切换到 root 用户进行安装
+USER root
+
+# 设置工作目录
+WORKDIR /opt/flink/usrlib
+
+# 安装额外的 Python 依赖
+RUN pip3 install --no-cache-dir \
+    requests==2.31.0 \
+    pyyaml==6.0.1 \
+    urllib3==2.0.7
+
+# 复制脚本下载入口点
+COPY scripts/flink_app_entrypoint.py /opt/flink/usrlib/entrypoint.py
+RUN chmod +x /opt/flink/usrlib/entrypoint.py
+
+# 创建必要的目录
+RUN mkdir -p /tmp/flink-scripts /tmp/flink-jars && \
+    chown -R flink:flink /tmp/flink-scripts /tmp/flink-jars
+
+# 设置环境变量
+ENV PYFLINK_CLIENT_EXECUTABLE=python3
+ENV PYFLINK_EXECUTABLE=python3
+ENV PYTHONUNBUFFERED=1
+ENV FLINK_HOME=/opt/flink
+
+# 切换回 flink 用户
+USER flink
+
+# 容器启动命令将由 Flink Operator 控制
+# 不需要设置 CMD 或 ENTRYPOINT
+
