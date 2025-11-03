@@ -1506,57 +1506,66 @@ if __name__ == '__main__':
             return False
     
     async def _sync_from_flink(self, job: FlinkJob) -> bool:
-        """从 Flink REST API 同步作业状态"""
+        """从 Flink 同步作业状态（支持 Operator 模式）"""
         try:
             if not job.flink_job_id:
                 return False
             
-            # 查询 Flink 作业状态
-            response = await self.client.get(f"/jobs/{job.flink_job_id}")
-            response.raise_for_status()
+            # Operator 模式：从 FlinkDeployment 获取状态
+            # flink_job_id 实际上是 FlinkDeployment 名称
+            operator_status = await self.operator_manager.get_job_status(job.flink_job_id)
             
-            flink_status = response.json()
-            state = flink_status.get("state", "").upper()
-            
-            # 映射 Flink 状态到我们的状态
-            status_mapping = {
-                "CREATED": JobStatus.CREATED,
-                "RUNNING": JobStatus.RUNNING,
-                "FINISHED": JobStatus.FINISHED,
-                "FAILED": JobStatus.FAILED,
-                "CANCELED": JobStatus.CANCELLED,
-                "CANCELLING": JobStatus.RUNNING,
-                "RESTARTING": JobStatus.RUNNING,
-                "SUSPENDED": JobStatus.SUSPENDED,
-            }
-            
-            new_status = status_mapping.get(state, JobStatus.RUNNING)
-            
-            # 更新数据库
-            db = mongodb.get_database()
-            collection = db.flink_jobs
-            
-            update_data = {
-                "status": new_status.value,
-            }
-            
-            # 如果作业完成，记录结束时间
-            if new_status in [JobStatus.FINISHED, JobStatus.FAILED, JobStatus.CANCELLED]:
-                update_data["end_time"] = datetime.utcnow().isoformat()
+            if operator_status:
+                # 使用 Operator 的状态
+                state = operator_status.get("state", "UNKNOWN").upper()
                 
-                # 计算运行时长
-                if job.start_time:
-                    start = datetime.fromisoformat(job.start_time)
-                    end = datetime.utcnow()
-                    update_data["duration"] = int((end - start).total_seconds())
-            
-            await collection.update_one(
-                {"job_id": job.job_id},
-                {"$set": update_data}
-            )
-            
-            logger.info(f"同步作业状态成功: {job.job_id}, Flink 状态: {state} -> {new_status.value}")
-            return True
+                # 映射 Flink 状态到我们的状态
+                status_mapping = {
+                    "CREATED": JobStatus.CREATED,
+                    "RUNNING": JobStatus.RUNNING,
+                    "FINISHED": JobStatus.FINISHED,
+                    "FAILED": JobStatus.FAILED,
+                    "CANCELED": JobStatus.CANCELLED,
+                    "CANCELLING": JobStatus.RUNNING,
+                    "RESTARTING": JobStatus.RUNNING,
+                    "SUSPENDED": JobStatus.SUSPENDED,
+                    "RECONCILING": JobStatus.RECONCILING,
+                }
+                
+                new_status = status_mapping.get(state, JobStatus.RUNNING)
+                
+                # 更新数据库
+                db = mongodb.get_database()
+                collection = db.flink_jobs
+                
+                update_data = {
+                    "status": new_status.value,
+                }
+                
+                # 如果 Operator 返回了错误信息
+                if operator_status.get("error"):
+                    update_data["error_message"] = operator_status["error"]
+                
+                # 如果作业完成，记录结束时间
+                if new_status in [JobStatus.FINISHED, JobStatus.FAILED, JobStatus.CANCELLED]:
+                    update_data["end_time"] = datetime.utcnow().isoformat()
+                    
+                    # 计算运行时长
+                    if job.start_time:
+                        start = datetime.fromisoformat(job.start_time)
+                        end = datetime.utcnow()
+                        update_data["duration"] = int((end - start).total_seconds())
+                
+                await collection.update_one(
+                    {"job_id": job.job_id},
+                    {"$set": update_data}
+                )
+                
+                logger.info(f"✓ 同步作业状态成功(Operator): {job.job_id}, 状态: {state} -> {new_status.value}")
+                return True
+            else:
+                logger.warning(f"无法从 Operator 获取作业状态: {job.flink_job_id}")
+                return False
             
         except Exception as e:
             logger.error(f"从 Flink 同步状态失败: {job.job_id}, 错误: {e}")
