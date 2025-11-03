@@ -402,8 +402,9 @@ class FlinkCRDGenerator:
         
         优先级：
         1. 请求参数中的 resource_profile（资源档位）
-        2. 模板配置中的 jobmanager_cpu/memory 等
-        3. 默认使用 micro 档位
+        2. 模板配置中的 resource_profile（资源档位）
+        3. 模板配置中的 jobmanager_cpu/memory 等自定义资源
+        4. 默认使用 micro 档位
         
         Args:
             template: 作业模板
@@ -412,15 +413,27 @@ class FlinkCRDGenerator:
         Returns:
             (jobmanager_resources, taskmanager_resources)
         """
+        from loguru import logger
+        
         # 1. 检查请求参数中是否指定了资源档位
         resource_profile = request.job_config.get("resource_profile")
         
         if resource_profile and resource_profile in RESOURCE_PROFILES:
             # 使用预定义的资源档位
             profile = RESOURCE_PROFILES[resource_profile]
+            logger.info(f"✓ 使用请求参数中的资源档位: {resource_profile}")
             return profile["jobmanager"], profile["taskmanager"]
         
-        # 2. 检查模板配置中是否有自定义资源配置
+        # 2. 检查模板配置中是否指定了资源档位
+        template_resource_profile = template.config.get("resource_profile")
+        
+        if template_resource_profile and template_resource_profile in RESOURCE_PROFILES:
+            # 使用模板中的资源档位
+            profile = RESOURCE_PROFILES[template_resource_profile]
+            logger.info(f"✓ 使用模板配置中的资源档位: {template_resource_profile}, JM内存={profile['jobmanager']['memory']}, TM内存={profile['taskmanager']['memory']}")
+            return profile["jobmanager"], profile["taskmanager"]
+        
+        # 3. 检查模板配置中是否有自定义资源配置
         jm_cpu = template.config.get("jobmanager_cpu") or request.job_config.get("jobmanager_cpu")
         jm_memory = template.config.get("jobmanager_memory") or request.job_config.get("jobmanager_memory")
         tm_cpu = template.config.get("taskmanager_cpu") or request.job_config.get("taskmanager_cpu")
@@ -436,10 +449,13 @@ class FlinkCRDGenerator:
                 "cpu": tm_cpu or RESOURCE_PROFILES["micro"]["taskmanager"]["cpu"],
                 "memory": tm_memory or RESOURCE_PROFILES["micro"]["taskmanager"]["memory"]
             }
+            logger.info(f"✓ 使用自定义资源配置: JM内存={jm_resources['memory']}, TM内存={tm_resources['memory']}")
             return jm_resources, tm_resources
         
-        # 3. 默认使用 micro 档位（适合测试和小规模生产）
+        # 4. 默认使用 micro 档位（适合测试和小规模生产）
         profile = RESOURCE_PROFILES["micro"]
+        logger.warning(f"⚠️ 未找到资源配置，使用默认 micro 档位: JM内存={profile['jobmanager']['memory']}, TM内存={profile['taskmanager']['memory']}")
+        logger.warning(f"   模板config内容: {template.config}")
         return profile["jobmanager"], profile["taskmanager"]
     
     def _generate_resource_name(self, job_id: str) -> str:
