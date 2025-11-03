@@ -427,6 +427,18 @@ class FlinkJobManager:
         # 如果是远程脚本（URL），需要在容器中下载
         is_remote = script_path.startswith("http://") or script_path.startswith("https://")
         
+        # 获取依赖的 JAR 文件（从模板配置中读取）
+        jar_files = template.config.get("jar_files", [])
+        
+        # 构建基础 flink run 命令
+        base_cmd = f"/opt/flink/bin/flink run -m {jobmanager_rpc_address} -p {parallelism}"
+        
+        # 添加 JAR 依赖
+        if jar_files:
+            jar_args = " ".join([f"--jarfile {jar}" for jar in jar_files])
+            base_cmd += f" {jar_args}"
+            logger.info(f"添加 JAR 依赖: {jar_files}")
+        
         if is_remote:
             # 构建下载并执行的命令
             script_filename = script_path.split("/")[-1]
@@ -436,11 +448,11 @@ echo "下载 Python 脚本: {script_path}"
 wget -O /tmp/{script_filename} {script_path}
 echo "脚本下载完成"
 echo "开始提交 Flink 作业..."
-/opt/flink/bin/flink run -m {jobmanager_rpc_address} -p {parallelism} -py /tmp/{script_filename}
+{base_cmd} -py /tmp/{script_filename}
 """
         else:
             # 本地文件路径
-            flink_command_str = f"/opt/flink/bin/flink run -m {jobmanager_rpc_address} -p {parallelism} -py {script_path}"
+            flink_command_str = f"{base_cmd} -py {script_path}"
         
         # 添加入口点（如果指定）
         if entry_point and entry_point != "main":
