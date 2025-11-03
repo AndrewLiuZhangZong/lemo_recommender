@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     # Flink 集群配置
     flink_rest_url: str = Field(default="http://localhost:8081", description="Flink REST API 地址")
     flink_rest_timeout: int = Field(default=30, description="Flink REST API 超时时间（秒）")
+    flink_jobmanager_rpc_address: str = Field(default="localhost:6123", description="Flink JobManager RPC 地址（host:port）")
     
     # 外部服务配置
     tenant_service_grpc_url: str = Field(default="localhost:9000")

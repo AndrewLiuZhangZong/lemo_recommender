@@ -418,12 +418,18 @@ class FlinkJobManager:
         
         logger.info(f"准备通过 Kubernetes Job 提交 Python 脚本作业: {script_path}")
         
+        # 从配置读取 JobManager RPC 地址
+        from app.core.config import settings
+        jobmanager_rpc_address = settings.flink_jobmanager_rpc_address
+        
+        logger.info(f"JobManager RPC 地址: {jobmanager_rpc_address}")
+        
         # 构建 flink run 命令
+        # 使用 -m 指定 JobManager 地址（标准用法）
         flink_command = [
             "/opt/flink/bin/flink", "run",
-            "-t", "remote",
-            "-Djobmanager.rpc.address=flink",
-            "-p", str(parallelism),  # 拆分为两个参数
+            "-m", jobmanager_rpc_address,  # JobManager RPC 地址
+            "-p", str(parallelism),
             "-py", script_path,
         ]
         

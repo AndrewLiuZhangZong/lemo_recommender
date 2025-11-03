@@ -31,7 +31,7 @@ docker-compose up -d flink
 
 ### 2. 访问 Flink Web UI
 
-- **地址**: http://localhost:8081
+- **地址**: http://localhost:8081啊
 - **默认显示**: Flink 集群概览、作业列表、TaskManager 状态等
 
 ### 3. 验证安装
