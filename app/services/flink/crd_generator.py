@@ -216,7 +216,7 @@ class FlinkCRDGenerator:
                 }
             },
             "spec": {
-                "image": "registry.cn-beijing.aliyuncs.com/lemo_zls/flink-python:latest",  # TaskManager 使用基础镜像
+                "image": self.app_image,  # 默认镜像（JobManager 使用）
                 "imagePullPolicy": self._get_image_pull_policy(),
                 "flinkVersion": "v1_19",
                 "flinkConfiguration": self._build_flink_configuration(
@@ -234,16 +234,6 @@ class FlinkCRDGenerator:
                     "resource": {
                         "memory": jm_resources["memory"],
                         "cpu": jm_resources["cpu"]
-                    },
-                    "podTemplate": {
-                        "spec": {
-                            "containers": [
-                                {
-                                    "name": "flink-main-container",
-                                    "image": self.app_image  # JobManager 使用完整镜像（包含 entrypoint.py）
-                                }
-                            ]
-                        }
                     }
                 },
                 "taskManager": {
@@ -251,7 +241,17 @@ class FlinkCRDGenerator:
                         "memory": tm_resources["memory"],
                         "cpu": tm_resources["cpu"]
                     },
-                    "replicas": autoscaler_config.get("min_replicas", max(1, parallelism // 4))
+                    "replicas": autoscaler_config.get("min_replicas", max(1, parallelism // 4)),
+                    "podTemplate": {
+                        "spec": {
+                            "containers": [
+                                {
+                                    "name": "flink-main-container",
+                                    "image": "registry.cn-beijing.aliyuncs.com/lemo_zls/flink-python:latest"  # TaskManager 使用 Python 镜像
+                                }
+                            ]
+                        }
+                    }
                 },
                 "job": {
                     "jarURI": "local:///opt/flink/opt/flink-python-1.19.3.jar",
