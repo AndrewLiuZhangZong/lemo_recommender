@@ -13,27 +13,57 @@ RESOURCE_PROFILES = {
     "micro": {
         "jobmanager": {"cpu": 0.2, "memory": "256m"},
         "taskmanager": {"cpu": 0.2, "memory": "256m"},
-        "description": "测试/开发环境，极小数据量"
+        "description": "测试/开发环境，极小数据量",
+        "min_replicas": 1,
+        "max_replicas": 2
     },
     "small": {
         "jobmanager": {"cpu": 0.5, "memory": "512m"},
         "taskmanager": {"cpu": 0.5, "memory": "512m"},
-        "description": "小规模生产，QPS < 1000"
+        "description": "小规模生产，QPS < 1000",
+        "min_replicas": 1,
+        "max_replicas": 3
     },
     "medium": {
         "jobmanager": {"cpu": 1.0, "memory": "1024m"},
         "taskmanager": {"cpu": 1.0, "memory": "1024m"},
-        "description": "中等规模生产，QPS 1000-10000"
+        "description": "中等规模生产，QPS 1000-10000",
+        "min_replicas": 2,
+        "max_replicas": 5
     },
     "large": {
         "jobmanager": {"cpu": 2.0, "memory": "2048m"},
         "taskmanager": {"cpu": 2.0, "memory": "2048m"},
-        "description": "大规模生产，QPS 10000-100000"
+        "description": "大规模生产，QPS 10000-100000",
+        "min_replicas": 2,
+        "max_replicas": 10
     },
     "xlarge": {
         "jobmanager": {"cpu": 4.0, "memory": "4096m"},
         "taskmanager": {"cpu": 4.0, "memory": "4096m"},
-        "description": "超大规模生产，QPS > 100000"
+        "description": "超大规模生产，QPS > 100000",
+        "min_replicas": 3,
+        "max_replicas": 20
+    }
+}
+
+# 自动伸缩模式
+AUTOSCALER_MODES = {
+    "disabled": {
+        "name": "禁用自动伸缩",
+        "description": "固定资源，适合流量稳定的场景"
+    },
+    "reactive": {
+        "name": "Flink Reactive Mode",
+        "description": "根据可用资源自动调整并行度（Flink 1.13+）"
+    },
+    "hpa": {
+        "name": "Kubernetes HPA",
+        "description": "根据 CPU/内存使用率自动扩缩 TaskManager"
+    },
+    "hpa_reactive": {
+        "name": "HPA + Reactive（推荐）",
+        "description": "结合 HPA 和 Reactive Mode，业界最佳实践"
     }
 }
 
@@ -81,6 +111,9 @@ class FlinkCRDGenerator:
         # 获取资源配置（支持资源档位）
         jm_resources, tm_resources = self._get_resource_config(template, request)
         
+        # 获取自动伸缩配置
+        autoscaler_config = self._get_autoscaler_config(template, request)
+        
         # 构建 FlinkDeployment CRD
         crd = {
             "apiVersion": "flink.apache.org/v1beta1",
@@ -99,15 +132,9 @@ class FlinkCRDGenerator:
                 "image": self.app_image,
                 "imagePullPolicy": "IfNotPresent",
                 "flinkVersion": "v1_19",
-                "flinkConfiguration": {
-                    "taskmanager.numberOfTaskSlots": str(parallelism),
-                    "python.client.executable": "python3",
-                    "python.executable": "python3",
-                    "state.backend": "filesystem",
-                    "state.checkpoints.dir": "file:///flink/checkpoints",
-                    "state.savepoints.dir": "file:///flink/savepoints",
-                    "execution.checkpointing.interval": str(template.config.get("checkpoint_interval", 300000)),
-                },
+                "flinkConfiguration": self._build_flink_configuration(
+                    template, request, parallelism, autoscaler_config
+                ),
                 "serviceAccount": "lemo-service-recommender-sa",
                 "podTemplate": {
                     "spec": {
@@ -127,7 +154,7 @@ class FlinkCRDGenerator:
                         "memory": tm_resources["memory"],
                         "cpu": tm_resources["cpu"]
                     },
-                    "replicas": max(1, parallelism // 4)  # 每个 TM 4个 slot
+                    "replicas": autoscaler_config.get("min_replicas", max(1, parallelism // 4))
                 },
                 "job": {
                     "jarURI": "local:///opt/flink/opt/flink-python-1.19.3.jar",
@@ -158,7 +185,100 @@ class FlinkCRDGenerator:
                 }
             ]
         
+        # 添加 HPA 配置（如果启用）
+        if autoscaler_config.get("mode") in ["hpa", "hpa_reactive"]:
+            crd["spec"]["mode"] = "native"  # HPA 需要 native 模式
+            
         return crd
+    
+    def _build_flink_configuration(
+        self,
+        template: JobTemplate,
+        request: FlinkJobSubmitRequest,
+        parallelism: int,
+        autoscaler_config: Dict[str, Any]
+    ) -> Dict[str, str]:
+        """
+        构建 Flink 配置
+        
+        Args:
+            template: 作业模板
+            request: 提交请求
+            parallelism: 并行度
+            autoscaler_config: 自动伸缩配置
+            
+        Returns:
+            Flink 配置字典
+        """
+        config = {
+            "taskmanager.numberOfTaskSlots": str(parallelism),
+            "python.client.executable": "python3",
+            "python.executable": "python3",
+            "state.backend": "filesystem",
+            "state.checkpoints.dir": "file:///flink/checkpoints",
+            "state.savepoints.dir": "file:///flink/savepoints",
+            "execution.checkpointing.interval": str(template.config.get("checkpoint_interval", 300000)),
+        }
+        
+        # 如果启用 Reactive Mode
+        if autoscaler_config.get("mode") in ["reactive", "hpa_reactive"]:
+            config["scheduler-mode"] = "reactive"
+            config["jobmanager.adaptive-scheduler.min-parallelism-increase"] = "1"
+            config["jobmanager.adaptive-scheduler.resource-stabilization-timeout"] = "10s"
+        
+        return config
+    
+    def _get_autoscaler_config(
+        self,
+        template: JobTemplate,
+        request: FlinkJobSubmitRequest
+    ) -> Dict[str, Any]:
+        """
+        获取自动伸缩配置
+        
+        Args:
+            template: 作业模板
+            request: 提交请求
+            
+        Returns:
+            自动伸缩配置
+        """
+        # 获取自动伸缩模式
+        autoscaler_mode = (
+            request.job_config.get("autoscaler_mode") or
+            template.config.get("autoscaler_mode") or
+            "disabled"
+        )
+        
+        # 获取资源档位（用于推荐的副本数）
+        resource_profile = (
+            request.job_config.get("resource_profile") or
+            template.config.get("resource_profile") or
+            "micro"
+        )
+        
+        # 从资源档位获取推荐的副本数范围
+        profile = RESOURCE_PROFILES.get(resource_profile, RESOURCE_PROFILES["micro"])
+        min_replicas = profile.get("min_replicas", 1)
+        max_replicas = profile.get("max_replicas", 2)
+        
+        # 允许用户自定义覆盖
+        min_replicas = request.job_config.get("min_replicas") or template.config.get("min_replicas") or min_replicas
+        max_replicas = request.job_config.get("max_replicas") or template.config.get("max_replicas") or max_replicas
+        
+        # CPU 目标使用率（HPA）
+        target_cpu_utilization = (
+            request.job_config.get("target_cpu_utilization") or
+            template.config.get("target_cpu_utilization") or
+            80  # 默认 80%
+        )
+        
+        return {
+            "mode": autoscaler_mode,
+            "min_replicas": int(min_replicas),
+            "max_replicas": int(max_replicas),
+            "target_cpu_utilization": int(target_cpu_utilization)
+        }
     
     def _get_resource_config(
         self,
@@ -315,6 +435,79 @@ class FlinkCRDGenerator:
                 })
         
         return env_vars
+    
+    def generate_hpa(
+        self,
+        deployment_name: str,
+        autoscaler_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        生成 HorizontalPodAutoscaler（HPA）配置
+        
+        Args:
+            deployment_name: FlinkDeployment 名称
+            autoscaler_config: 自动伸缩配置
+            
+        Returns:
+            HPA YAML (dict 格式)
+        """
+        hpa = {
+            "apiVersion": "autoscaling/v2",
+            "kind": "HorizontalPodAutoscaler",
+            "metadata": {
+                "name": f"{deployment_name}-hpa",
+                "namespace": self.namespace,
+                "labels": {
+                    "app": "flink-job",
+                    "deployment": deployment_name
+                }
+            },
+            "spec": {
+                "scaleTargetRef": {
+                    "apiVersion": "flink.apache.org/v1beta1",
+                    "kind": "FlinkDeployment",
+                    "name": deployment_name
+                },
+                "minReplicas": autoscaler_config.get("min_replicas", 1),
+                "maxReplicas": autoscaler_config.get("max_replicas", 5),
+                "metrics": [
+                    {
+                        "type": "Resource",
+                        "resource": {
+                            "name": "cpu",
+                            "target": {
+                                "type": "Utilization",
+                                "averageUtilization": autoscaler_config.get("target_cpu_utilization", 80)
+                            }
+                        }
+                    }
+                ],
+                "behavior": {
+                    "scaleDown": {
+                        "stabilizationWindowSeconds": 300,  # 5 分钟稳定期
+                        "policies": [
+                            {
+                                "type": "Percent",
+                                "value": 50,
+                                "periodSeconds": 60
+                            }
+                        ]
+                    },
+                    "scaleUp": {
+                        "stabilizationWindowSeconds": 60,  # 1 分钟稳定期
+                        "policies": [
+                            {
+                                "type": "Percent",
+                                "value": 100,
+                                "periodSeconds": 60
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+        
+        return hpa
     
     def to_yaml(self, crd: Dict[str, Any]) -> str:
         """

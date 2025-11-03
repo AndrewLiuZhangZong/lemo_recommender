@@ -60,8 +60,13 @@ class OperatorJobManager:
         crd = self.crd_generator.generate(template, request)
         resource_name = crd["metadata"]["name"]
         
+        # 获取自动伸缩配置
+        autoscaler_config = self.crd_generator._get_autoscaler_config(template, request)
+        autoscaler_mode = autoscaler_config.get("mode", "disabled")
+        
         logger.info(f"准备提交 FlinkDeployment: {resource_name}")
         logger.info(f"作业类型: {template.job_type.value}, 并行度: {crd['spec']['job']['parallelism']}")
+        logger.info(f"自动伸缩: {autoscaler_mode}, 副本范围: {autoscaler_config.get('min_replicas')}-{autoscaler_config.get('max_replicas')}")
         
         try:
             # 创建 FlinkDeployment CRD
@@ -74,6 +79,11 @@ class OperatorJobManager:
             )
             
             logger.info(f"✓ FlinkDeployment 创建成功: {resource_name}")
+            
+            # 如果启用了 HPA，创建 HPA 资源
+            if autoscaler_mode in ["hpa", "hpa_reactive"]:
+                await self._create_hpa(resource_name, autoscaler_config)
+            
             return resource_name
             
         except ApiException as e:
@@ -181,6 +191,10 @@ class OperatorJobManager:
             是否成功
         """
         try:
+            # 删除 HPA（如果存在）
+            await self._delete_hpa(job_name)
+            
+            # 删除 FlinkDeployment
             self.custom_api.delete_namespaced_custom_object(
                 group="flink.apache.org",
                 version="v1beta1",
@@ -223,4 +237,60 @@ class OperatorJobManager:
         except ApiException as e:
             logger.error(f"✗ 列出 FlinkDeployment 失败: {e}")
             return []
+    
+    async def _create_hpa(self, deployment_name: str, autoscaler_config: dict):
+        """
+        创建 HorizontalPodAutoscaler
+        
+        Args:
+            deployment_name: FlinkDeployment 名称
+            autoscaler_config: 自动伸缩配置
+        """
+        try:
+            hpa = self.crd_generator.generate_hpa(deployment_name, autoscaler_config)
+            
+            # 使用 autoscaling/v2 API
+            from kubernetes import client as k8s_client
+            autoscaling_api = k8s_client.AutoscalingV2Api()
+            
+            autoscaling_api.create_namespaced_horizontal_pod_autoscaler(
+                namespace=self.namespace,
+                body=hpa
+            )
+            
+            logger.info(f"✓ HPA 创建成功: {hpa['metadata']['name']}")
+            logger.info(f"  副本范围: {autoscaler_config['min_replicas']}-{autoscaler_config['max_replicas']}")
+            logger.info(f"  目标 CPU: {autoscaler_config['target_cpu_utilization']}%")
+            
+        except ApiException as e:
+            if e.status == 409:  # Already exists
+                logger.warning(f"HPA 已存在，跳过创建: {deployment_name}-hpa")
+            else:
+                logger.error(f"✗ HPA 创建失败: {e}")
+                # 不抛出异常，HPA 创建失败不影响作业提交
+    
+    async def _delete_hpa(self, deployment_name: str):
+        """
+        删除 HorizontalPodAutoscaler
+        
+        Args:
+            deployment_name: FlinkDeployment 名称
+        """
+        try:
+            from kubernetes import client as k8s_client
+            autoscaling_api = k8s_client.AutoscalingV2Api()
+            
+            hpa_name = f"{deployment_name}-hpa"
+            autoscaling_api.delete_namespaced_horizontal_pod_autoscaler(
+                name=hpa_name,
+                namespace=self.namespace
+            )
+            
+            logger.info(f"✓ HPA 删除成功: {hpa_name}")
+            
+        except ApiException as e:
+            if e.status == 404:  # Not found
+                logger.debug(f"HPA 不存在，跳过删除: {deployment_name}-hpa")
+            else:
+                logger.warning(f"HPA 删除失败: {e}")
 
