@@ -305,10 +305,10 @@ class FlinkCRDGenerator:
             "taskmanager.numberOfTaskSlots": str(parallelism),
             "python.client.executable": "python3",
             "python.executable": "python3",
-            "state.backend": "filesystem",
-            "state.checkpoints.dir": "file:///flink/checkpoints",
-            "state.savepoints.dir": "file:///flink/savepoints",
-            "execution.checkpointing.interval": str(template.config.get("checkpoint_interval", 300000)),
+            "state.backend": "hashmap",  # 使用内存状态后端（适合测试）
+            "state.checkpoints.dir": "file:///tmp/flink-checkpoints",  # 使用临时目录
+            "state.savepoints.dir": "file:///tmp/flink-savepoints",  # 使用临时目录
+            "execution.checkpointing.interval": str(template.config.get("checkpoint_interval", 600000)),  # 10分钟
             "taskmanager.memory.managed.fraction": "0.1",
         }
         
