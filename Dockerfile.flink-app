@@ -26,9 +26,9 @@ RUN pip3 install --no-cache-dir \
 COPY scripts/flink_app_entrypoint.py /opt/flink/usrlib/entrypoint.py
 RUN chmod +x /opt/flink/usrlib/entrypoint.py
 
-# 创建必要的目录
+# 创建必要的目录并设置权限
 RUN mkdir -p /tmp/flink-scripts /tmp/flink-jars && \
-    chown -R flink:flink /tmp/flink-scripts /tmp/flink-jars
+    chown -R flink:flink /tmp/flink-scripts /tmp/flink-jars /opt/flink/usrlib
 
 # 设置环境变量
 ENV PYFLINK_CLIENT_EXECUTABLE=python3
