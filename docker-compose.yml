@@ -249,8 +249,26 @@ services:
         query.server.port: 6125
         EOF
         
+        echo "=== 启动 Flink 集群 ==="
         # 启动 Flink 集群
         /opt/flink/bin/start-cluster.sh
+        
+        # 等待启动
+        sleep 5
+        
+        # 检查进程
+        echo "=== 检查 Flink 进程 ==="
+        ps aux | grep -E "StandaloneSessionClusterEntrypoint|TaskManagerRunner" | grep -v grep
+        
+        # 检查 TaskManager 是否启动
+        if ! ps aux | grep TaskManagerRunner | grep -v grep > /dev/null; then
+            echo "⚠️  TaskManager 未启动，尝试手动启动..."
+            /opt/flink/bin/taskmanager.sh start
+            sleep 3
+            ps aux | grep TaskManagerRunner | grep -v grep
+        fi
+        
+        echo "=== Flink 集群启动完成 ==="
         
         # 保持运行并输出日志
         tail -f /opt/flink/log/*.log 2>/dev/null || sleep infinity
