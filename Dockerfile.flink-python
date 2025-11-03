@@ -16,6 +16,8 @@ RUN apt-get update && \
         python3-dev \
         python3-pip \
         python3-venv \
+        openjdk-11-jdk-headless \
+        build-essential \
         wget \
         curl \
         unzip \
@@ -26,10 +28,8 @@ RUN apt-get update && \
 # 升级 pip
 RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# 安装 PyFlink（与 Flink 版本匹配）
-RUN pip3 install --no-cache-dir apache-flink==1.19.0
-
-# 安装常用 Python 数据处理库
+# 注意：不直接安装 apache-flink，使用 Flink 自带的 Python 支持
+# 只安装必要的 Python 库（Flink 脚本可能需要）
 RUN pip3 install --no-cache-dir \
     pandas==2.1.4 \
     numpy==1.26.3 \
@@ -40,9 +40,7 @@ RUN pip3 install --no-cache-dir \
     aiohttp==3.9.0 \
     pyyaml==6.0.1
 
-# 安装 Flink 连接器（常用）
-RUN pip3 install --no-cache-dir \
-    apache-flink-libraries==1.19.0
+# Flink 连接器通过 JAR 提供，不需要 Python 包
 
 # 下载 Kafka connector JAR（与 Flink 1.19 兼容）
 RUN cd /opt/flink/opt && \

@@ -141,6 +141,34 @@ class FlinkCRDGenerator:
         self.namespace = namespace
         self.app_image = app_image or "registry.cn-beijing.aliyuncs.com/lemo_zls/flink-app:latest"
     
+    def _get_image_pull_policy(self) -> str:
+        """
+        获取镜像拉取策略
+        
+        业界最佳实践：
+        - :latest 标签 -> Always（确保总是拉取最新版本）
+        - 明确版本标签 -> IfNotPresent（减少网络流量，提高启动速度）
+        
+        可通过环境变量 FLINK_IMAGE_PULL_POLICY 覆盖（Always/IfNotPresent/Never）
+        
+        Returns:
+            镜像拉取策略
+        """
+        import os
+        
+        # 优先使用环境变量配置
+        env_policy = os.getenv("FLINK_IMAGE_PULL_POLICY", "").strip()
+        if env_policy in ["Always", "IfNotPresent", "Never"]:
+            return env_policy
+        
+        # 根据镜像标签自动判断
+        if self.app_image.endswith(":latest") or ":dev" in self.app_image:
+            # 开发环境：总是拉取最新版本
+            return "Always"
+        else:
+            # 生产环境：使用缓存镜像（明确版本标签）
+            return "IfNotPresent"
+    
     def generate(
         self,
         template: JobTemplate,
@@ -189,7 +217,7 @@ class FlinkCRDGenerator:
             },
             "spec": {
                 "image": self.app_image,
-                "imagePullPolicy": "IfNotPresent",
+                "imagePullPolicy": self._get_image_pull_policy(),
                 "flinkVersion": "v1_19",
                 "flinkConfiguration": self._build_flink_configuration(
                     template, request, parallelism, autoscaler_config, jm_resources, tm_resources

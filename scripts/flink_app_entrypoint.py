@@ -25,7 +25,6 @@ Flink Application Mode 入口点
 import os
 import sys
 import urllib.request
-import importlib.util
 import traceback
 from pathlib import Path
 
@@ -140,30 +139,25 @@ def execute_script(script_path: str):
     log("=" * 60)
     
     try:
-        # 方式1：使用 exec (简单，但没有模块隔离)
-        # with open(script_path, 'r', encoding='utf-8') as f:
-        #     exec(f.read(), {'__name__': '__main__'})
+        # 将脚本目录添加到 sys.path，使脚本可以导入同目录的模块
+        script_dir = os.path.dirname(os.path.abspath(script_path))
+        if script_dir not in sys.path:
+            sys.path.insert(0, script_dir)
         
-        # 方式2：作为模块导入并执行 (推荐，有模块隔离)
-        spec = importlib.util.spec_from_file_location("user_script", script_path)
-        if not spec or not spec.loader:
-            raise RuntimeError(f"无法加载脚本: {script_path}")
+        # 使用 exec() 直接执行脚本，这样可以正确触发 if __name__ == '__main__':
+        # 创建一个全局命名空间，设置 __name__ = '__main__'
+        global_namespace = {
+            '__name__': '__main__',
+            '__file__': script_path,
+            '__builtins__': __builtins__,
+        }
         
-        user_module = importlib.util.module_from_spec(spec)
-        sys.modules["user_script"] = user_module
+        # 读取并执行脚本
+        with open(script_path, 'r', encoding='utf-8') as f:
+            script_code = f.read()
         
-        # 设置 __name__ 为 '__main__'，这样脚本中的 if __name__ == '__main__': 可以执行
-        user_module.__name__ = '__main__'
-        
-        # 执行模块
-        spec.loader.exec_module(user_module)
-        
-        # 如果脚本有 main() 函数，调用它
-        if hasattr(user_module, 'main') and callable(user_module.main):
-            log("✓ 脚本已加载，调用 main() 函数")
-            user_module.main()
-        else:
-            log("✓ 脚本已执行（无 main() 函数）")
+        # 执行脚本
+        exec(script_code, global_namespace)
         
         log("=" * 60)
         log("✓ 用户脚本执行完成", "SUCCESS")
