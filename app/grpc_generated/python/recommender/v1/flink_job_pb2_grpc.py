@@ -41,6 +41,16 @@ class FlinkJobServiceStub(object):
                 request_serializer=recommender_dot_v1_dot_flink__job__pb2.CreateJobTemplateRequest.SerializeToString,
                 response_deserializer=recommender_dot_v1_dot_flink__job__pb2.CreateJobTemplateResponse.FromString,
                 _registered_method=True)
+        self.UpdateJobTemplate = channel.unary_unary(
+                '/lemo.recommender.v1.FlinkJobService/UpdateJobTemplate',
+                request_serializer=recommender_dot_v1_dot_flink__job__pb2.UpdateJobTemplateRequest.SerializeToString,
+                response_deserializer=recommender_dot_v1_dot_flink__job__pb2.UpdateJobTemplateResponse.FromString,
+                _registered_method=True)
+        self.DeleteJobTemplate = channel.unary_unary(
+                '/lemo.recommender.v1.FlinkJobService/DeleteJobTemplate',
+                request_serializer=recommender_dot_v1_dot_flink__job__pb2.DeleteJobTemplateRequest.SerializeToString,
+                response_deserializer=recommender_dot_v1_dot_flink__job__pb2.DeleteJobTemplateResponse.FromString,
+                _registered_method=True)
         self.GetJobTemplate = channel.unary_unary(
                 '/lemo.recommender.v1.FlinkJobService/GetJobTemplate',
                 request_serializer=recommender_dot_v1_dot_flink__job__pb2.GetJobTemplateRequest.SerializeToString,
@@ -101,6 +111,18 @@ class FlinkJobServiceServicer(object):
     def CreateJobTemplate(self, request, context):
         """作业模板管理
         """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def UpdateJobTemplate(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeleteJobTemplate(self, request, context):
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -174,6 +196,16 @@ def add_FlinkJobServiceServicer_to_server(servicer, server):
                     servicer.CreateJobTemplate,
                     request_deserializer=recommender_dot_v1_dot_flink__job__pb2.CreateJobTemplateRequest.FromString,
                     response_serializer=recommender_dot_v1_dot_flink__job__pb2.CreateJobTemplateResponse.SerializeToString,
+            ),
+            'UpdateJobTemplate': grpc.unary_unary_rpc_method_handler(
+                    servicer.UpdateJobTemplate,
+                    request_deserializer=recommender_dot_v1_dot_flink__job__pb2.UpdateJobTemplateRequest.FromString,
+                    response_serializer=recommender_dot_v1_dot_flink__job__pb2.UpdateJobTemplateResponse.SerializeToString,
+            ),
+            'DeleteJobTemplate': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteJobTemplate,
+                    request_deserializer=recommender_dot_v1_dot_flink__job__pb2.DeleteJobTemplateRequest.FromString,
+                    response_serializer=recommender_dot_v1_dot_flink__job__pb2.DeleteJobTemplateResponse.SerializeToString,
             ),
             'GetJobTemplate': grpc.unary_unary_rpc_method_handler(
                     servicer.GetJobTemplate,
@@ -255,6 +287,60 @@ class FlinkJobService(object):
             '/lemo.recommender.v1.FlinkJobService/CreateJobTemplate',
             recommender_dot_v1_dot_flink__job__pb2.CreateJobTemplateRequest.SerializeToString,
             recommender_dot_v1_dot_flink__job__pb2.CreateJobTemplateResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def UpdateJobTemplate(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/lemo.recommender.v1.FlinkJobService/UpdateJobTemplate',
+            recommender_dot_v1_dot_flink__job__pb2.UpdateJobTemplateRequest.SerializeToString,
+            recommender_dot_v1_dot_flink__job__pb2.UpdateJobTemplateResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DeleteJobTemplate(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/lemo.recommender.v1.FlinkJobService/DeleteJobTemplate',
+            recommender_dot_v1_dot_flink__job__pb2.DeleteJobTemplateRequest.SerializeToString,
+            recommender_dot_v1_dot_flink__job__pb2.DeleteJobTemplateResponse.FromString,
             options,
             channel_credentials,
             insecure,

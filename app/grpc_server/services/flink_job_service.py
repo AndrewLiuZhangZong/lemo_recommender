@@ -250,6 +250,123 @@ class FlinkJobServicer(flink_job_pb2_grpc.FlinkJobServiceServicer):
                 page_info=pagination_pb2.PageInfo()
             )
     
+    async def UpdateJobTemplate(
+        self,
+        request: "flink_job_pb2.UpdateJobTemplateRequest",
+        context
+    ) -> "flink_job_pb2.UpdateJobTemplateResponse":
+        """更新作业模板"""
+        try:
+            # 解析作业类型
+            job_type_map = {
+                flink_job_pb2.JobTemplateType.PYTHON_SCRIPT: JobTemplateType.PYTHON_SCRIPT,
+                flink_job_pb2.JobTemplateType.JAR: JobTemplateType.JAR,
+                flink_job_pb2.JobTemplateType.SQL: JobTemplateType.SQL,
+                flink_job_pb2.JobTemplateType.PYTHON_FLINK: JobTemplateType.PYTHON_FLINK
+            }
+            
+            job_type = job_type_map.get(request.job_type)
+            if not job_type:
+                logger.error(f"无效的作业类型: {request.job_type}")
+                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+                context.set_details(f"无效的作业类型: {request.job_type}")
+                raise ValueError(f"无效的作业类型: {request.job_type}")
+            
+            # 构建更新数据
+            update_data = {
+                "name": request.name,
+                "description": request.description,
+                "job_type": job_type.value,
+                "config": self._struct_to_dict(request.config) if request.config else {},
+                "parallelism": request.parallelism,
+                "checkpoints_enabled": request.checkpoints_enabled,
+                "checkpoint_interval_ms": request.checkpoint_interval_ms,
+                "task_manager_memory": request.task_manager_memory,
+                "job_manager_memory": request.job_manager_memory,
+                "tags": list(request.tags) if request.tags else []
+            }
+            
+            logger.info(f"更新作业模板: template_id={request.template_id}, name={request.name}")
+            
+            # 调用服务
+            template = await self.job_manager.update_job_template(request.template_id, update_data)
+            
+            if not template:
+                logger.error(f"模板不存在: {request.template_id}")
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details(f"模板不存在: {request.template_id}")
+                return flink_job_pb2.UpdateJobTemplateResponse(template=None)
+            
+            logger.info(f"✓ 作业模板更新成功: {template.template_id}")
+            
+            # 构建响应
+            template_pb = flink_job_pb2.JobTemplate(
+                template_id=template.template_id,
+                name=template.name,
+                description=template.description or "",
+                job_type=getattr(flink_job_pb2.JobTemplateType, template.job_type.name),
+                config=self._dict_to_struct(template.config) if template.config else self._dict_to_struct({}),
+                parallelism=template.parallelism,
+                checkpoints_enabled=template.checkpoints_enabled,
+                checkpoint_interval_ms=template.checkpoint_interval_ms or 0,
+                task_manager_memory=template.task_manager_memory or "",
+                job_manager_memory=template.job_manager_memory or "",
+                status=template.status or "active",
+                tags=template.tags or [],
+                created_by=template.created_by or "",
+                created_at=self._datetime_to_timestamp(template.created_at) if template.created_at else None,
+                updated_at=self._datetime_to_timestamp(template.updated_at) if template.updated_at else None
+            )
+            
+            return flink_job_pb2.UpdateJobTemplateResponse(template=template_pb)
+        
+        except ValueError as e:
+            logger.error(f"更新作业模板失败（参数错误）: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"更新作业模板失败: {e}", exc_info=True)
+            if context.code() == grpc.StatusCode.OK:
+                context.set_code(grpc.StatusCode.INTERNAL)
+                context.set_details(f"更新作业模板失败: {str(e)}")
+            raise
+    
+    async def DeleteJobTemplate(
+        self,
+        request: "flink_job_pb2.DeleteJobTemplateRequest",
+        context
+    ) -> "flink_job_pb2.DeleteJobTemplateResponse":
+        """删除作业模板"""
+        try:
+            logger.info(f"删除作业模板: template_id={request.template_id}")
+            
+            # 调用服务
+            success = await self.job_manager.delete_job_template(request.template_id)
+            
+            if success:
+                logger.info(f"✓ 作业模板删除成功: {request.template_id}")
+                return flink_job_pb2.DeleteJobTemplateResponse(
+                    success=True,
+                    message="删除成功"
+                )
+            else:
+                logger.warning(f"模板不存在或删除失败: {request.template_id}")
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details(f"模板不存在: {request.template_id}")
+                return flink_job_pb2.DeleteJobTemplateResponse(
+                    success=False,
+                    message="模板不存在"
+                )
+        
+        except Exception as e:
+            logger.error(f"删除作业模板失败: {e}", exc_info=True)
+            if context.code() == grpc.StatusCode.OK:
+                context.set_code(grpc.StatusCode.INTERNAL)
+                context.set_details(f"删除作业模板失败: {str(e)}")
+            return flink_job_pb2.DeleteJobTemplateResponse(
+                success=False,
+                message=f"删除失败: {str(e)}"
+            )
+    
     async def SubmitJob(
         self,
         request: "flink_job_pb2.SubmitJobRequest",

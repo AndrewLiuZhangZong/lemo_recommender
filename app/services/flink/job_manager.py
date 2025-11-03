@@ -257,6 +257,93 @@ class FlinkJobManager:
         
         return templates
     
+    async def update_job_template(self, template_id: str, template_data: dict) -> Optional[JobTemplate]:
+        """
+        更新作业模板
+        
+        Args:
+            template_id: 模板 ID
+            template_data: 更新的模板数据
+            
+        Returns:
+            更新后的模板
+        """
+        try:
+            db = mongodb.get_database()
+            if db is None:
+                raise RuntimeError("MongoDB 数据库连接未建立")
+            
+            collection = db.job_templates
+            logger.info(f"准备更新作业模板: template_id={template_id}")
+            
+            # 检查模板是否存在
+            existing = await collection.find_one({"template_id": template_id})
+            if not existing:
+                logger.warning(f"模板不存在: {template_id}")
+                raise ValueError(f"模板不存在: {template_id}")
+            
+            # 更新时间戳
+            template_data["updated_at"] = datetime.utcnow()
+            
+            # 更新模板
+            result = await collection.update_one(
+                {"template_id": template_id},
+                {"$set": template_data}
+            )
+            
+            if result.modified_count == 0:
+                logger.warning(f"模板未被修改: {template_id}")
+            
+            # 获取更新后的模板
+            updated_doc = await collection.find_one({"template_id": template_id})
+            if not updated_doc:
+                raise RuntimeError("更新后无法找到模板")
+            
+            logger.info(f"✓ 作业模板更新成功: {template_id}")
+            return JobTemplate(**updated_doc)
+            
+        except Exception as e:
+            logger.error(f"更新作业模板失败: {e}", exc_info=True)
+            raise RuntimeError(f"更新作业模板失败: {str(e)}") from e
+    
+    async def delete_job_template(self, template_id: str) -> bool:
+        """
+        删除作业模板
+        
+        Args:
+            template_id: 模板 ID
+            
+        Returns:
+            是否成功
+        """
+        try:
+            db = mongodb.get_database()
+            if db is None:
+                raise RuntimeError("MongoDB 数据库连接未建立")
+            
+            collection = db.job_templates
+            logger.info(f"准备删除作业模板: template_id={template_id}")
+            
+            # 检查模板是否存在
+            existing = await collection.find_one({"template_id": template_id})
+            if not existing:
+                logger.warning(f"模板不存在: {template_id}")
+                return False
+            
+            # 删除模板
+            result = await collection.delete_one({"template_id": template_id})
+            
+            if result.deleted_count == 0:
+                logger.warning(f"模板删除失败: {template_id}")
+                return False
+            
+            logger.info(f"✓ 作业模板删除成功: {template_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"删除作业模板失败: {e}", exc_info=True)
+            raise RuntimeError(f"删除作业模板失败: {str(e)}") from e
+    
     # ========== 作业实例管理（存储在 MongoDB） ==========
     
     async def submit_job(

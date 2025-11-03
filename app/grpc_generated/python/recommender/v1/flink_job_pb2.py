@@ -28,7 +28,7 @@ from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__
 from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1erecommender/v1/flink_job.proto\x12\x13lemo.recommender.v1\x1a\"recommender_common/v1/common.proto\x1a&recommender_common/v1/pagination.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xdb\x03\n\x0bJobTemplate\x12\x13\n\x0btemplate_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x36\n\x08job_type\x18\x04 \x01(\x0e\x32$.lemo.recommender.v1.JobTemplateType\x12\'\n\x06\x63onfig\x18\x05 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x13\n\x0bparallelism\x18\x06 \x01(\x05\x12\x1b\n\x13\x63heckpoints_enabled\x18\x07 \x01(\x08\x12\x1e\n\x16\x63heckpoint_interval_ms\x18\x08 \x01(\x03\x12\x16\n\x0esavepoint_path\x18\t \x01(\t\x12\x1b\n\x13task_manager_memory\x18\n \x01(\t\x12\x1a\n\x12job_manager_memory\x18\x0b \x01(\t\x12\x0e\n\x06status\x18\x0c \x01(\t\x12\x0c\n\x04tags\x18\r \x03(\t\x12\x12\n\ncreated_by\x18\x0e \x01(\t\x12.\n\ncreated_at\x18\x0f \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nupdated_at\x18\x10 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xcb\x03\n\x08\x46linkJob\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12\x10\n\x08job_name\x18\x02 \x01(\t\x12\x13\n\x0btemplate_id\x18\x03 \x01(\t\x12\x14\n\x0c\x66link_job_id\x18\x04 \x01(\t\x12\x19\n\x11\x66link_cluster_url\x18\x05 \x01(\t\x12.\n\x06status\x18\x06 \x01(\x0e\x32\x1e.lemo.recommender.v1.JobStatus\x12\x15\n\rerror_message\x18\x07 \x01(\t\x12+\n\njob_config\x18\x08 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x14\n\x0csubmitted_by\x18\t \x01(\t\x12\x30\n\x0csubmitted_at\x18\n \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nstart_time\x18\x0b \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x65nd_time\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08\x64uration\x18\r \x01(\x03\x12\x15\n\rnum_operators\x18\x0e \x01(\x05\x12\x14\n\x0cnum_vertices\x18\x0f \x01(\x05\"\xcc\x02\n\x18\x43reateJobTemplateRequest\x12\x13\n\x0btemplate_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x36\n\x08job_type\x18\x04 \x01(\x0e\x32$.lemo.recommender.v1.JobTemplateType\x12\'\n\x06\x63onfig\x18\x05 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x13\n\x0bparallelism\x18\x06 \x01(\x05\x12\x1b\n\x13\x63heckpoints_enabled\x18\x07 \x01(\x08\x12\x1e\n\x16\x63heckpoint_interval_ms\x18\x08 \x01(\x03\x12\x1b\n\x13task_manager_memory\x18\t \x01(\t\x12\x1a\n\x12job_manager_memory\x18\n \x01(\t\x12\x0c\n\x04tags\x18\x0b \x03(\t\"O\n\x19\x43reateJobTemplateResponse\x12\x32\n\x08template\x18\x01 \x01(\x0b\x32 .lemo.recommender.v1.JobTemplate\",\n\x15GetJobTemplateRequest\x12\x13\n\x0btemplate_id\x18\x01 \x01(\t\"L\n\x16GetJobTemplateResponse\x12\x32\n\x08template\x18\x01 \x01(\x0b\x32 .lemo.recommender.v1.JobTemplate\"J\n\x17ListJobTemplatesRequest\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x0c\n\x04page\x18\x02 \x01(\x05\x12\x11\n\tpage_size\x18\x03 \x01(\x05\"\x88\x01\n\x18ListJobTemplatesResponse\x12\x33\n\ttemplates\x18\x01 \x03(\x0b\x32 .lemo.recommender.v1.JobTemplate\x12\x37\n\tpage_info\x18\x02 \x01(\x0b\x32$.lemo.recommender_common.v1.PageInfo\"\xa9\x01\n\x10SubmitJobRequest\x12\x13\n\x0btemplate_id\x18\x01 \x01(\t\x12\x0e\n\x06job_id\x18\x02 \x01(\t\x12\x10\n\x08job_name\x18\x03 \x01(\t\x12+\n\njob_config\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x19\n\x11\x66link_cluster_url\x18\x05 \x01(\t\x12\x16\n\x0esavepoint_path\x18\x06 \x01(\t\"?\n\x11SubmitJobResponse\x12*\n\x03job\x18\x01 \x01(\x0b\x32\x1d.lemo.recommender.v1.FlinkJob\"\x1f\n\rGetJobRequest\x12\x0e\n\x06job_id\x18\x01 \x01(\t\"<\n\x0eGetJobResponse\x12*\n\x03job\x18\x01 \x01(\x0b\x32\x1d.lemo.recommender.v1.FlinkJob\"B\n\x0fListJobsRequest\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x0c\n\x04page\x18\x02 \x01(\x05\x12\x11\n\tpage_size\x18\x03 \x01(\x05\"x\n\x10ListJobsResponse\x12+\n\x04jobs\x18\x01 \x03(\x0b\x32\x1d.lemo.recommender.v1.FlinkJob\x12\x37\n\tpage_info\x18\x02 \x01(\x0b\x32$.lemo.recommender_common.v1.PageInfo\"/\n\x0eStopJobRequest\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12\r\n\x05\x66orce\x18\x02 \x01(\x08\"=\n\x0fStopJobResponse\x12*\n\x03job\x18\x01 \x01(\x0b\x32\x1d.lemo.recommender.v1.FlinkJob\"!\n\x0fPauseJobRequest\x12\x0e\n\x06job_id\x18\x01 \x01(\t\">\n\x10PauseJobResponse\x12*\n\x03job\x18\x01 \x01(\x0b\x32\x1d.lemo.recommender.v1.FlinkJob\":\n\x10ResumeJobRequest\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12\x16\n\x0esavepoint_path\x18\x02 \x01(\t\"?\n\x11ResumeJobResponse\x12*\n\x03job\x18\x01 \x01(\x0b\x32\x1d.lemo.recommender.v1.FlinkJob\"\x17\n\x15GetClusterInfoRequest\"G\n\x16GetClusterInfoResponse\x12-\n\x0c\x63luster_info\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\"\x18\n\x16ListClusterJobsRequest\"@\n\x17ListClusterJobsResponse\x12%\n\x04jobs\x18\x01 \x03(\x0b\x32\x17.google.protobuf.Struct*k\n\x0fJobTemplateType\x12!\n\x1dJOB_TEMPLATE_TYPE_UNSPECIFIED\x10\x00\x12\x11\n\rPYTHON_SCRIPT\x10\x01\x12\x07\n\x03JAR\x10\x02\x12\x07\n\x03SQL\x10\x03\x12\x10\n\x0cPYTHON_FLINK\x10\x04*\x8a\x01\n\tJobStatus\x12\x1a\n\x16JOB_STATUS_UNSPECIFIED\x10\x00\x12\x0b\n\x07\x43REATED\x10\x01\x12\x0b\n\x07RUNNING\x10\x02\x12\x0c\n\x08\x46INISHED\x10\x03\x12\n\n\x06\x46\x41ILED\x10\x04\x12\r\n\tCANCELLED\x10\x05\x12\r\n\tSUSPENDED\x10\x06\x12\x0f\n\x0bRECONCILING\x10\x07\x32\xcd\x08\n\x0f\x46linkJobService\x12r\n\x11\x43reateJobTemplate\x12-.lemo.recommender.v1.CreateJobTemplateRequest\x1a..lemo.recommender.v1.CreateJobTemplateResponse\x12i\n\x0eGetJobTemplate\x12*.lemo.recommender.v1.GetJobTemplateRequest\x1a+.lemo.recommender.v1.GetJobTemplateResponse\x12o\n\x10ListJobTemplates\x12,.lemo.recommender.v1.ListJobTemplatesRequest\x1a-.lemo.recommender.v1.ListJobTemplatesResponse\x12Z\n\tSubmitJob\x12%.lemo.recommender.v1.SubmitJobRequest\x1a&.lemo.recommender.v1.SubmitJobResponse\x12Q\n\x06GetJob\x12\".lemo.recommender.v1.GetJobRequest\x1a#.lemo.recommender.v1.GetJobResponse\x12W\n\x08ListJobs\x12$.lemo.recommender.v1.ListJobsRequest\x1a%.lemo.recommender.v1.ListJobsResponse\x12T\n\x07StopJob\x12#.lemo.recommender.v1.StopJobRequest\x1a$.lemo.recommender.v1.StopJobResponse\x12W\n\x08PauseJob\x12$.lemo.recommender.v1.PauseJobRequest\x1a%.lemo.recommender.v1.PauseJobResponse\x12Z\n\tResumeJob\x12%.lemo.recommender.v1.ResumeJobRequest\x1a&.lemo.recommender.v1.ResumeJobResponse\x12i\n\x0eGetClusterInfo\x12*.lemo.recommender.v1.GetClusterInfoRequest\x1a+.lemo.recommender.v1.GetClusterInfoResponse\x12l\n\x0fListClusterJobs\x12+.lemo.recommender.v1.ListClusterJobsRequest\x1a,.lemo.recommender.v1.ListClusterJobsResponseBQZOcodeup.aliyun.com/zls/lemo_go/andrew-protos/gen/go/recommender/v1;recommenderv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1erecommender/v1/flink_job.proto\x12\x13lemo.recommender.v1\x1a\"recommender_common/v1/common.proto\x1a&recommender_common/v1/pagination.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xdb\x03\n\x0bJobTemplate\x12\x13\n\x0btemplate_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x36\n\x08job_type\x18\x04 \x01(\x0e\x32$.lemo.recommender.v1.JobTemplateType\x12\'\n\x06\x63onfig\x18\x05 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x13\n\x0bparallelism\x18\x06 \x01(\x05\x12\x1b\n\x13\x63heckpoints_enabled\x18\x07 \x01(\x08\x12\x1e\n\x16\x63heckpoint_interval_ms\x18\x08 \x01(\x03\x12\x16\n\x0esavepoint_path\x18\t \x01(\t\x12\x1b\n\x13task_manager_memory\x18\n \x01(\t\x12\x1a\n\x12job_manager_memory\x18\x0b \x01(\t\x12\x0e\n\x06status\x18\x0c \x01(\t\x12\x0c\n\x04tags\x18\r \x03(\t\x12\x12\n\ncreated_by\x18\x0e \x01(\t\x12.\n\ncreated_at\x18\x0f \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nupdated_at\x18\x10 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xcb\x03\n\x08\x46linkJob\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12\x10\n\x08job_name\x18\x02 \x01(\t\x12\x13\n\x0btemplate_id\x18\x03 \x01(\t\x12\x14\n\x0c\x66link_job_id\x18\x04 \x01(\t\x12\x19\n\x11\x66link_cluster_url\x18\x05 \x01(\t\x12.\n\x06status\x18\x06 \x01(\x0e\x32\x1e.lemo.recommender.v1.JobStatus\x12\x15\n\rerror_message\x18\x07 \x01(\t\x12+\n\njob_config\x18\x08 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x14\n\x0csubmitted_by\x18\t \x01(\t\x12\x30\n\x0csubmitted_at\x18\n \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nstart_time\x18\x0b \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x65nd_time\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08\x64uration\x18\r \x01(\x03\x12\x15\n\rnum_operators\x18\x0e \x01(\x05\x12\x14\n\x0cnum_vertices\x18\x0f \x01(\x05\"\xcc\x02\n\x18\x43reateJobTemplateRequest\x12\x13\n\x0btemplate_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x36\n\x08job_type\x18\x04 \x01(\x0e\x32$.lemo.recommender.v1.JobTemplateType\x12\'\n\x06\x63onfig\x18\x05 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x13\n\x0bparallelism\x18\x06 \x01(\x05\x12\x1b\n\x13\x63heckpoints_enabled\x18\x07 \x01(\x08\x12\x1e\n\x16\x63heckpoint_interval_ms\x18\x08 \x01(\x03\x12\x1b\n\x13task_manager_memory\x18\t \x01(\t\x12\x1a\n\x12job_manager_memory\x18\n \x01(\t\x12\x0c\n\x04tags\x18\x0b \x03(\t\"O\n\x19\x43reateJobTemplateResponse\x12\x32\n\x08template\x18\x01 \x01(\x0b\x32 .lemo.recommender.v1.JobTemplate\"\xcc\x02\n\x18UpdateJobTemplateRequest\x12\x13\n\x0btemplate_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x36\n\x08job_type\x18\x04 \x01(\x0e\x32$.lemo.recommender.v1.JobTemplateType\x12\'\n\x06\x63onfig\x18\x05 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x13\n\x0bparallelism\x18\x06 \x01(\x05\x12\x1b\n\x13\x63heckpoints_enabled\x18\x07 \x01(\x08\x12\x1e\n\x16\x63heckpoint_interval_ms\x18\x08 \x01(\x03\x12\x1b\n\x13task_manager_memory\x18\t \x01(\t\x12\x1a\n\x12job_manager_memory\x18\n \x01(\t\x12\x0c\n\x04tags\x18\x0b \x03(\t\"O\n\x19UpdateJobTemplateResponse\x12\x32\n\x08template\x18\x01 \x01(\x0b\x32 .lemo.recommender.v1.JobTemplate\"/\n\x18\x44\x65leteJobTemplateRequest\x12\x13\n\x0btemplate_id\x18\x01 \x01(\t\"=\n\x19\x44\x65leteJobTemplateResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\",\n\x15GetJobTemplateRequest\x12\x13\n\x0btemplate_id\x18\x01 \x01(\t\"L\n\x16GetJobTemplateResponse\x12\x32\n\x08template\x18\x01 \x01(\x0b\x32 .lemo.recommender.v1.JobTemplate\"J\n\x17ListJobTemplatesRequest\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x0c\n\x04page\x18\x02 \x01(\x05\x12\x11\n\tpage_size\x18\x03 \x01(\x05\"\x88\x01\n\x18ListJobTemplatesResponse\x12\x33\n\ttemplates\x18\x01 \x03(\x0b\x32 .lemo.recommender.v1.JobTemplate\x12\x37\n\tpage_info\x18\x02 \x01(\x0b\x32$.lemo.recommender_common.v1.PageInfo\"\xa9\x01\n\x10SubmitJobRequest\x12\x13\n\x0btemplate_id\x18\x01 \x01(\t\x12\x0e\n\x06job_id\x18\x02 \x01(\t\x12\x10\n\x08job_name\x18\x03 \x01(\t\x12+\n\njob_config\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x19\n\x11\x66link_cluster_url\x18\x05 \x01(\t\x12\x16\n\x0esavepoint_path\x18\x06 \x01(\t\"?\n\x11SubmitJobResponse\x12*\n\x03job\x18\x01 \x01(\x0b\x32\x1d.lemo.recommender.v1.FlinkJob\"\x1f\n\rGetJobRequest\x12\x0e\n\x06job_id\x18\x01 \x01(\t\"<\n\x0eGetJobResponse\x12*\n\x03job\x18\x01 \x01(\x0b\x32\x1d.lemo.recommender.v1.FlinkJob\"B\n\x0fListJobsRequest\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x0c\n\x04page\x18\x02 \x01(\x05\x12\x11\n\tpage_size\x18\x03 \x01(\x05\"x\n\x10ListJobsResponse\x12+\n\x04jobs\x18\x01 \x03(\x0b\x32\x1d.lemo.recommender.v1.FlinkJob\x12\x37\n\tpage_info\x18\x02 \x01(\x0b\x32$.lemo.recommender_common.v1.PageInfo\"/\n\x0eStopJobRequest\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12\r\n\x05\x66orce\x18\x02 \x01(\x08\"=\n\x0fStopJobResponse\x12*\n\x03job\x18\x01 \x01(\x0b\x32\x1d.lemo.recommender.v1.FlinkJob\"!\n\x0fPauseJobRequest\x12\x0e\n\x06job_id\x18\x01 \x01(\t\">\n\x10PauseJobResponse\x12*\n\x03job\x18\x01 \x01(\x0b\x32\x1d.lemo.recommender.v1.FlinkJob\":\n\x10ResumeJobRequest\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12\x16\n\x0esavepoint_path\x18\x02 \x01(\t\"?\n\x11ResumeJobResponse\x12*\n\x03job\x18\x01 \x01(\x0b\x32\x1d.lemo.recommender.v1.FlinkJob\"\x17\n\x15GetClusterInfoRequest\"G\n\x16GetClusterInfoResponse\x12-\n\x0c\x63luster_info\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\"\x18\n\x16ListClusterJobsRequest\"@\n\x17ListClusterJobsResponse\x12%\n\x04jobs\x18\x01 \x03(\x0b\x32\x17.google.protobuf.Struct*k\n\x0fJobTemplateType\x12!\n\x1dJOB_TEMPLATE_TYPE_UNSPECIFIED\x10\x00\x12\x11\n\rPYTHON_SCRIPT\x10\x01\x12\x07\n\x03JAR\x10\x02\x12\x07\n\x03SQL\x10\x03\x12\x10\n\x0cPYTHON_FLINK\x10\x04*\x8a\x01\n\tJobStatus\x12\x1a\n\x16JOB_STATUS_UNSPECIFIED\x10\x00\x12\x0b\n\x07\x43REATED\x10\x01\x12\x0b\n\x07RUNNING\x10\x02\x12\x0c\n\x08\x46INISHED\x10\x03\x12\n\n\x06\x46\x41ILED\x10\x04\x12\r\n\tCANCELLED\x10\x05\x12\r\n\tSUSPENDED\x10\x06\x12\x0f\n\x0bRECONCILING\x10\x07\x32\xb5\n\n\x0f\x46linkJobService\x12r\n\x11\x43reateJobTemplate\x12-.lemo.recommender.v1.CreateJobTemplateRequest\x1a..lemo.recommender.v1.CreateJobTemplateResponse\x12r\n\x11UpdateJobTemplate\x12-.lemo.recommender.v1.UpdateJobTemplateRequest\x1a..lemo.recommender.v1.UpdateJobTemplateResponse\x12r\n\x11\x44\x65leteJobTemplate\x12-.lemo.recommender.v1.DeleteJobTemplateRequest\x1a..lemo.recommender.v1.DeleteJobTemplateResponse\x12i\n\x0eGetJobTemplate\x12*.lemo.recommender.v1.GetJobTemplateRequest\x1a+.lemo.recommender.v1.GetJobTemplateResponse\x12o\n\x10ListJobTemplates\x12,.lemo.recommender.v1.ListJobTemplatesRequest\x1a-.lemo.recommender.v1.ListJobTemplatesResponse\x12Z\n\tSubmitJob\x12%.lemo.recommender.v1.SubmitJobRequest\x1a&.lemo.recommender.v1.SubmitJobResponse\x12Q\n\x06GetJob\x12\".lemo.recommender.v1.GetJobRequest\x1a#.lemo.recommender.v1.GetJobResponse\x12W\n\x08ListJobs\x12$.lemo.recommender.v1.ListJobsRequest\x1a%.lemo.recommender.v1.ListJobsResponse\x12T\n\x07StopJob\x12#.lemo.recommender.v1.StopJobRequest\x1a$.lemo.recommender.v1.StopJobResponse\x12W\n\x08PauseJob\x12$.lemo.recommender.v1.PauseJobRequest\x1a%.lemo.recommender.v1.PauseJobResponse\x12Z\n\tResumeJob\x12%.lemo.recommender.v1.ResumeJobRequest\x1a&.lemo.recommender.v1.ResumeJobResponse\x12i\n\x0eGetClusterInfo\x12*.lemo.recommender.v1.GetClusterInfoRequest\x1a+.lemo.recommender.v1.GetClusterInfoResponse\x12l\n\x0fListClusterJobs\x12+.lemo.recommender.v1.ListClusterJobsRequest\x1a,.lemo.recommender.v1.ListClusterJobsResponseBQZOcodeup.aliyun.com/zls/lemo_go/andrew-protos/gen/go/recommender/v1;recommenderv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -36,10 +36,10 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'recommender.v1.flink_job_pb
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZOcodeup.aliyun.com/zls/lemo_go/andrew-protos/gen/go/recommender/v1;recommenderv1'
-  _globals['_JOBTEMPLATETYPE']._serialized_start=2937
-  _globals['_JOBTEMPLATETYPE']._serialized_end=3044
-  _globals['_JOBSTATUS']._serialized_start=3047
-  _globals['_JOBSTATUS']._serialized_end=3185
+  _globals['_JOBTEMPLATETYPE']._serialized_start=3465
+  _globals['_JOBTEMPLATETYPE']._serialized_end=3572
+  _globals['_JOBSTATUS']._serialized_start=3575
+  _globals['_JOBSTATUS']._serialized_end=3713
   _globals['_JOBTEMPLATE']._serialized_start=195
   _globals['_JOBTEMPLATE']._serialized_end=670
   _globals['_FLINKJOB']._serialized_start=673
@@ -48,46 +48,54 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_CREATEJOBTEMPLATEREQUEST']._serialized_end=1467
   _globals['_CREATEJOBTEMPLATERESPONSE']._serialized_start=1469
   _globals['_CREATEJOBTEMPLATERESPONSE']._serialized_end=1548
-  _globals['_GETJOBTEMPLATEREQUEST']._serialized_start=1550
-  _globals['_GETJOBTEMPLATEREQUEST']._serialized_end=1594
-  _globals['_GETJOBTEMPLATERESPONSE']._serialized_start=1596
-  _globals['_GETJOBTEMPLATERESPONSE']._serialized_end=1672
-  _globals['_LISTJOBTEMPLATESREQUEST']._serialized_start=1674
-  _globals['_LISTJOBTEMPLATESREQUEST']._serialized_end=1748
-  _globals['_LISTJOBTEMPLATESRESPONSE']._serialized_start=1751
-  _globals['_LISTJOBTEMPLATESRESPONSE']._serialized_end=1887
-  _globals['_SUBMITJOBREQUEST']._serialized_start=1890
-  _globals['_SUBMITJOBREQUEST']._serialized_end=2059
-  _globals['_SUBMITJOBRESPONSE']._serialized_start=2061
-  _globals['_SUBMITJOBRESPONSE']._serialized_end=2124
-  _globals['_GETJOBREQUEST']._serialized_start=2126
-  _globals['_GETJOBREQUEST']._serialized_end=2157
-  _globals['_GETJOBRESPONSE']._serialized_start=2159
-  _globals['_GETJOBRESPONSE']._serialized_end=2219
-  _globals['_LISTJOBSREQUEST']._serialized_start=2221
-  _globals['_LISTJOBSREQUEST']._serialized_end=2287
-  _globals['_LISTJOBSRESPONSE']._serialized_start=2289
-  _globals['_LISTJOBSRESPONSE']._serialized_end=2409
-  _globals['_STOPJOBREQUEST']._serialized_start=2411
-  _globals['_STOPJOBREQUEST']._serialized_end=2458
-  _globals['_STOPJOBRESPONSE']._serialized_start=2460
-  _globals['_STOPJOBRESPONSE']._serialized_end=2521
-  _globals['_PAUSEJOBREQUEST']._serialized_start=2523
-  _globals['_PAUSEJOBREQUEST']._serialized_end=2556
-  _globals['_PAUSEJOBRESPONSE']._serialized_start=2558
-  _globals['_PAUSEJOBRESPONSE']._serialized_end=2620
-  _globals['_RESUMEJOBREQUEST']._serialized_start=2622
-  _globals['_RESUMEJOBREQUEST']._serialized_end=2680
-  _globals['_RESUMEJOBRESPONSE']._serialized_start=2682
-  _globals['_RESUMEJOBRESPONSE']._serialized_end=2745
-  _globals['_GETCLUSTERINFOREQUEST']._serialized_start=2747
-  _globals['_GETCLUSTERINFOREQUEST']._serialized_end=2770
-  _globals['_GETCLUSTERINFORESPONSE']._serialized_start=2772
-  _globals['_GETCLUSTERINFORESPONSE']._serialized_end=2843
-  _globals['_LISTCLUSTERJOBSREQUEST']._serialized_start=2845
-  _globals['_LISTCLUSTERJOBSREQUEST']._serialized_end=2869
-  _globals['_LISTCLUSTERJOBSRESPONSE']._serialized_start=2871
-  _globals['_LISTCLUSTERJOBSRESPONSE']._serialized_end=2935
-  _globals['_FLINKJOBSERVICE']._serialized_start=3188
-  _globals['_FLINKJOBSERVICE']._serialized_end=4289
+  _globals['_UPDATEJOBTEMPLATEREQUEST']._serialized_start=1551
+  _globals['_UPDATEJOBTEMPLATEREQUEST']._serialized_end=1883
+  _globals['_UPDATEJOBTEMPLATERESPONSE']._serialized_start=1885
+  _globals['_UPDATEJOBTEMPLATERESPONSE']._serialized_end=1964
+  _globals['_DELETEJOBTEMPLATEREQUEST']._serialized_start=1966
+  _globals['_DELETEJOBTEMPLATEREQUEST']._serialized_end=2013
+  _globals['_DELETEJOBTEMPLATERESPONSE']._serialized_start=2015
+  _globals['_DELETEJOBTEMPLATERESPONSE']._serialized_end=2076
+  _globals['_GETJOBTEMPLATEREQUEST']._serialized_start=2078
+  _globals['_GETJOBTEMPLATEREQUEST']._serialized_end=2122
+  _globals['_GETJOBTEMPLATERESPONSE']._serialized_start=2124
+  _globals['_GETJOBTEMPLATERESPONSE']._serialized_end=2200
+  _globals['_LISTJOBTEMPLATESREQUEST']._serialized_start=2202
+  _globals['_LISTJOBTEMPLATESREQUEST']._serialized_end=2276
+  _globals['_LISTJOBTEMPLATESRESPONSE']._serialized_start=2279
+  _globals['_LISTJOBTEMPLATESRESPONSE']._serialized_end=2415
+  _globals['_SUBMITJOBREQUEST']._serialized_start=2418
+  _globals['_SUBMITJOBREQUEST']._serialized_end=2587
+  _globals['_SUBMITJOBRESPONSE']._serialized_start=2589
+  _globals['_SUBMITJOBRESPONSE']._serialized_end=2652
+  _globals['_GETJOBREQUEST']._serialized_start=2654
+  _globals['_GETJOBREQUEST']._serialized_end=2685
+  _globals['_GETJOBRESPONSE']._serialized_start=2687
+  _globals['_GETJOBRESPONSE']._serialized_end=2747
+  _globals['_LISTJOBSREQUEST']._serialized_start=2749
+  _globals['_LISTJOBSREQUEST']._serialized_end=2815
+  _globals['_LISTJOBSRESPONSE']._serialized_start=2817
+  _globals['_LISTJOBSRESPONSE']._serialized_end=2937
+  _globals['_STOPJOBREQUEST']._serialized_start=2939
+  _globals['_STOPJOBREQUEST']._serialized_end=2986
+  _globals['_STOPJOBRESPONSE']._serialized_start=2988
+  _globals['_STOPJOBRESPONSE']._serialized_end=3049
+  _globals['_PAUSEJOBREQUEST']._serialized_start=3051
+  _globals['_PAUSEJOBREQUEST']._serialized_end=3084
+  _globals['_PAUSEJOBRESPONSE']._serialized_start=3086
+  _globals['_PAUSEJOBRESPONSE']._serialized_end=3148
+  _globals['_RESUMEJOBREQUEST']._serialized_start=3150
+  _globals['_RESUMEJOBREQUEST']._serialized_end=3208
+  _globals['_RESUMEJOBRESPONSE']._serialized_start=3210
+  _globals['_RESUMEJOBRESPONSE']._serialized_end=3273
+  _globals['_GETCLUSTERINFOREQUEST']._serialized_start=3275
+  _globals['_GETCLUSTERINFOREQUEST']._serialized_end=3298
+  _globals['_GETCLUSTERINFORESPONSE']._serialized_start=3300
+  _globals['_GETCLUSTERINFORESPONSE']._serialized_end=3371
+  _globals['_LISTCLUSTERJOBSREQUEST']._serialized_start=3373
+  _globals['_LISTCLUSTERJOBSREQUEST']._serialized_end=3397
+  _globals['_LISTCLUSTERJOBSRESPONSE']._serialized_start=3399
+  _globals['_LISTCLUSTERJOBSRESPONSE']._serialized_end=3463
+  _globals['_FLINKJOBSERVICE']._serialized_start=3716
+  _globals['_FLINKJOBSERVICE']._serialized_end=5049
 # @@protoc_insertion_point(module_scope)
