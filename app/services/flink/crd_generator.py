@@ -278,14 +278,18 @@ class FlinkCRDGenerator:
             "state.savepoints.dir": "file:///flink/savepoints",
             "execution.checkpointing.interval": str(template.config.get("checkpoint_interval", 300000)),
             # Flink 内存配置（适配 512MB 小内存环境）
-            # 512MB 总内存分配：JVM Metaspace (128MB) + Flink Memory (320MB) + Overhead (64MB)
+            # 512MB 总内存 = JVM Metaspace (96MB) + Flink Memory (256MB) + JVM Overhead (160MB)
             "taskmanager.memory.process.size": "512m",
-            "taskmanager.memory.flink.size": "320m",
-            "taskmanager.memory.jvm-metaspace.size": "128m",
+            "taskmanager.memory.flink.size": "256m",
+            "taskmanager.memory.jvm-metaspace.size": "96m",
+            "taskmanager.memory.jvm-overhead.min": "160m",
+            "taskmanager.memory.jvm-overhead.max": "160m",
             "taskmanager.memory.managed.fraction": "0.1",
             "jobmanager.memory.process.size": "512m",
-            "jobmanager.memory.flink.size": "320m",
-            "jobmanager.memory.jvm-metaspace.size": "128m",
+            "jobmanager.memory.flink.size": "256m",
+            "jobmanager.memory.jvm-metaspace.size": "96m",
+            "jobmanager.memory.jvm-overhead.min": "160m",
+            "jobmanager.memory.jvm-overhead.max": "160m",
         }
         
         # 如果启用 Reactive Mode
