@@ -394,7 +394,12 @@ class FlinkJobServicer(flink_job_pb2_grpc.FlinkJobServiceServicer):
         context
     ) -> "flink_job_pb2.StopJobResponse":
         """停止作业"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         try:
+            logger.info(f"停止作业: {request.job_id}, force={request.force}")
+            
             result = await self.job_manager.stop_job(request.job_id, force=request.force)
             
             # 获取作业信息
@@ -420,15 +425,17 @@ class FlinkJobServicer(flink_job_pb2_grpc.FlinkJobServiceServicer):
                     num_vertices=job.num_vertices or 0
                 )
             
+            logger.info(f"作业停止成功: {request.job_id}")
+            
             return flink_job_pb2.StopJobResponse(
-                
                 job=job_pb
             )
         
         except Exception as e:
-            return flink_job_pb2.StopJobResponse(
-                job=None
-            )
+            logger.error(f"停止作业失败: {request.job_id}, 错误: {e}", exc_info=True)
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"停止作业失败: {str(e)}")
+            raise
     
     async def GetClusterInfo(
         self,
@@ -471,4 +478,157 @@ class FlinkJobServicer(flink_job_pb2_grpc.FlinkJobServiceServicer):
             return flink_job_pb2.ListClusterJobsResponse(
                 jobs=[]
             )
+    
+    async def PauseJob(
+        self,
+        request: "flink_job_pb2.PauseJobRequest",
+        context
+    ) -> "flink_job_pb2.PauseJobResponse":
+        """暂停作业（创建 Savepoint 并停止）"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            logger.info(f"暂停作业: {request.job_id}")
+            
+            # 调用 job_manager 的 pause_job 方法
+            result = await self.job_manager.pause_job(request.job_id)
+            
+            # 获取更新后的作业信息
+            job = await self.job_manager.get_job(request.job_id)
+            
+            job_pb = None
+            if job:
+                job_pb = flink_job_pb2.FlinkJob(
+                    job_id=job.job_id,
+                    job_name=job.job_name,
+                    template_id=job.template_id,
+                    flink_job_id=job.flink_job_id or "",
+                    flink_cluster_url=job.flink_cluster_url,
+                    status=getattr(flink_job_pb2, job.status.name),
+                    error_message=job.error_message or "",
+                    job_config=self._dict_to_struct(job.job_config),
+                    submitted_by=job.submitted_by or "",
+                    submitted_at=self._datetime_to_timestamp(datetime.fromisoformat(job.submitted_at)) if job.submitted_at else None,
+                    start_time=self._datetime_to_timestamp(datetime.fromisoformat(job.start_time)) if job.start_time else None,
+                    end_time=self._datetime_to_timestamp(datetime.fromisoformat(job.end_time)) if job.end_time else None,
+                    duration=job.duration or 0,
+                    num_operators=job.num_operators or 0,
+                    num_vertices=job.num_vertices or 0
+                )
+            
+            logger.info(f"作业暂停成功: {request.job_id}")
+            
+            return flink_job_pb2.PauseJobResponse(
+                job=job_pb
+            )
+        
+        except Exception as e:
+            logger.error(f"暂停作业失败: {request.job_id}, 错误: {e}", exc_info=True)
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"暂停作业失败: {str(e)}")
+            raise
+    
+    async def ResumeJob(
+        self,
+        request: "flink_job_pb2.ResumeJobRequest",
+        context
+    ) -> "flink_job_pb2.ResumeJobResponse":
+        """恢复作业（从 Savepoint 恢复）"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            logger.info(f"恢复作业: {request.job_id}, savepoint: {request.savepoint_path}")
+            
+            # 调用 job_manager 的 resume_job 方法
+            result = await self.job_manager.resume_job(
+                request.job_id,
+                savepoint_path=request.savepoint_path if request.savepoint_path else None
+            )
+            
+            # 获取更新后的作业信息
+            job = await self.job_manager.get_job(request.job_id)
+            
+            job_pb = None
+            if job:
+                job_pb = flink_job_pb2.FlinkJob(
+                    job_id=job.job_id,
+                    job_name=job.job_name,
+                    template_id=job.template_id,
+                    flink_job_id=job.flink_job_id or "",
+                    flink_cluster_url=job.flink_cluster_url,
+                    status=getattr(flink_job_pb2, job.status.name),
+                    error_message=job.error_message or "",
+                    job_config=self._dict_to_struct(job.job_config),
+                    submitted_by=job.submitted_by or "",
+                    submitted_at=self._datetime_to_timestamp(datetime.fromisoformat(job.submitted_at)) if job.submitted_at else None,
+                    start_time=self._datetime_to_timestamp(datetime.fromisoformat(job.start_time)) if job.start_time else None,
+                    end_time=self._datetime_to_timestamp(datetime.fromisoformat(job.end_time)) if job.end_time else None,
+                    duration=job.duration or 0,
+                    num_operators=job.num_operators or 0,
+                    num_vertices=job.num_vertices or 0
+                )
+            
+            logger.info(f"作业恢复成功: {request.job_id}")
+            
+            return flink_job_pb2.ResumeJobResponse(
+                job=job_pb
+            )
+        
+        except Exception as e:
+            logger.error(f"恢复作业失败: {request.job_id}, 错误: {e}", exc_info=True)
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"恢复作业失败: {str(e)}")
+            raise
+    
+    async def CancelJob(
+        self,
+        request: "flink_job_pb2.CancelJobRequest",
+        context
+    ) -> "flink_job_pb2.CancelJobResponse":
+        """取消作业（立即停止，不创建 Savepoint）"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            logger.info(f"取消作业: {request.job_id}")
+            
+            # 调用 job_manager 的 cancel_job 方法
+            result = await self.job_manager.cancel_job(request.job_id)
+            
+            # 获取更新后的作业信息
+            job = await self.job_manager.get_job(request.job_id)
+            
+            job_pb = None
+            if job:
+                job_pb = flink_job_pb2.FlinkJob(
+                    job_id=job.job_id,
+                    job_name=job.job_name,
+                    template_id=job.template_id,
+                    flink_job_id=job.flink_job_id or "",
+                    flink_cluster_url=job.flink_cluster_url,
+                    status=getattr(flink_job_pb2, job.status.name),
+                    error_message=job.error_message or "",
+                    job_config=self._dict_to_struct(job.job_config),
+                    submitted_by=job.submitted_by or "",
+                    submitted_at=self._datetime_to_timestamp(datetime.fromisoformat(job.submitted_at)) if job.submitted_at else None,
+                    start_time=self._datetime_to_timestamp(datetime.fromisoformat(job.start_time)) if job.start_time else None,
+                    end_time=self._datetime_to_timestamp(datetime.fromisoformat(job.end_time)) if job.end_time else None,
+                    duration=job.duration or 0,
+                    num_operators=job.num_operators or 0,
+                    num_vertices=job.num_vertices or 0
+                )
+            
+            logger.info(f"作业取消成功: {request.job_id}")
+            
+            return flink_job_pb2.CancelJobResponse(
+                job=job_pb
+            )
+        
+        except Exception as e:
+            logger.error(f"取消作业失败: {request.job_id}, 错误: {e}", exc_info=True)
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"取消作业失败: {str(e)}")
+            raise
 

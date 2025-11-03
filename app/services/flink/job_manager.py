@@ -937,28 +937,211 @@ if __name__ == '__main__':
             raise ValueError(f"作业不存在: {job_id}")
         
         flink_job = FlinkJob(**job_doc)
+        result = {"status": "stopped"}
         
-        if not flink_job.flink_job_id:
-            raise ValueError(f"作业未提交到 Flink 集群: {job_id}")
-        
-        # 2. 停止 Flink 作业
-        if force:
-            result = await self.cancel_flink_job(flink_job.flink_job_id)
+        # 2. 停止 Flink 作业（如果已提交）
+        if flink_job.flink_job_id:
+            logger.info(f"停止 Flink 作业: {flink_job.flink_job_id}")
+            try:
+                if force:
+                    result = await self.cancel_flink_job(flink_job.flink_job_id)
+                else:
+                    result = await self.stop_flink_job(flink_job.flink_job_id)
+            except Exception as e:
+                logger.warning(f"停止 Flink 作业失败（可能已经停止）: {e}")
         else:
-            result = await self.stop_flink_job(flink_job.flink_job_id)
+            logger.info(f"作业尚未提交到 Flink，尝试停止 K8s Job")
+            # 尝试停止 K8s Job（对于 Python 作业）
+            try:
+                from kubernetes import client as k8s_client, config as k8s_config
+                
+                # 加载 K8s 配置
+                try:
+                    k8s_config.load_incluster_config()
+                except Exception:
+                    try:
+                        k8s_config.load_kube_config()
+                    except Exception:
+                        logger.warning("无法加载 Kubernetes 配置，跳过 K8s Job 清理")
+                        pass
+                
+                # 生成 K8s Job 名称
+                import re
+                safe_job_id = job_id.replace('_', '-').lower()
+                safe_job_id = re.sub(r'^[^a-z0-9]+|[^a-z0-9]+$', '', safe_job_id)
+                safe_job_id = re.sub(r'[^a-z0-9-]+', '-', safe_job_id)
+                k8s_job_name = f"flink-py-{safe_job_id}"[:63]
+                k8s_job_name = re.sub(r'-+$', '', k8s_job_name)
+                
+                # 删除 K8s Job
+                batch_v1 = k8s_client.BatchV1Api()
+                namespace = "lemo-dev"
+                
+                try:
+                    batch_v1.delete_namespaced_job(
+                        name=k8s_job_name,
+                        namespace=namespace,
+                        propagation_policy='Background'
+                    )
+                    logger.info(f"K8s Job 已删除: {k8s_job_name}")
+                    result["k8s_job_deleted"] = True
+                except Exception as e:
+                    logger.warning(f"删除 K8s Job 失败: {e}")
+            except Exception as e:
+                logger.warning(f"停止 K8s Job 失败: {e}")
         
         # 3. 更新作业状态
         await collection.update_one(
             {"job_id": job_id},
             {
                 "$set": {
-                    "status": JobStatus.CANCELLED if force else JobStatus.FINISHED,
+                    "status": JobStatus.CANCELLED.value if force else JobStatus.FINISHED.value,
                     "end_time": datetime.utcnow().isoformat(),
                     "updated_at": datetime.utcnow()
                 }
             }
         )
         
+        logger.info(f"作业状态已更新: {job_id} -> {JobStatus.CANCELLED if force else JobStatus.FINISHED}")
+        
+        return result
+    
+    async def pause_job(self, job_id: str) -> Dict[str, Any]:
+        """
+        暂停作业（创建 Savepoint 并停止）
+        
+        Args:
+            job_id: 作业ID（本地）
+            
+        Returns:
+            操作结果（包含 Savepoint 路径）
+        """
+        #1. 从 MongoDB 获取作业信息
+        db = mongodb.get_database()
+        collection = db.flink_jobs
+        
+        job_doc = await collection.find_one({"job_id": job_id})
+        if not job_doc:
+            raise ValueError(f"作业不存在: {job_id}")
+        
+        flink_job = FlinkJob(**job_doc)
+        
+        if not flink_job.flink_job_id:
+            raise ValueError(f"作业未提交到 Flink 集群: {job_id}")
+        
+        # 2. 暂停 Flink 作业（创建 Savepoint）
+        logger.info(f"暂停作业: {job_id}, Flink Job ID: {flink_job.flink_job_id}")
+        result = await self.suspend_flink_job(flink_job.flink_job_id)
+        
+        # 3. 更新作业状态
+        update_data = {
+            "status": JobStatus.SUSPENDED.value,
+            "updated_at": datetime.utcnow()
+        }
+        
+        # 保存 Savepoint 路径（如果返回了）
+        if result and "savepoint_path" in result:
+            update_data["savepoint_path"] = result["savepoint_path"]
+            logger.info(f"Savepoint 已创建: {result['savepoint_path']}")
+        
+        await collection.update_one(
+            {"job_id": job_id},
+            {"$set": update_data}
+        )
+        
+        logger.info(f"作业暂停成功: {job_id}")
+        return result
+    
+    async def resume_job(self, job_id: str, savepoint_path: Optional[str] = None) -> Dict[str, Any]:
+        """
+        恢复作业（从 Savepoint 恢复）
+        
+        Args:
+            job_id: 作业ID（本地）
+            savepoint_path: Savepoint 路径（可选，如果不指定则使用作业记录中的路径）
+            
+        Returns:
+            操作结果
+        """
+        # 1. 从 MongoDB 获取作业信息
+        db = mongodb.get_database()
+        collection = db.flink_jobs
+        
+        job_doc = await collection.find_one({"job_id": job_id})
+        if not job_doc:
+            raise ValueError(f"作业不存在: {job_id}")
+        
+        flink_job = FlinkJob(**job_doc)
+        
+        # 2. 确定 Savepoint 路径
+        if not savepoint_path:
+            savepoint_path = flink_job.savepoint_path
+            if not savepoint_path:
+                raise ValueError(f"未找到 Savepoint 路径，无法恢复作业: {job_id}")
+        
+        logger.info(f"恢复作业: {job_id}, Savepoint: {savepoint_path}")
+        
+        # 3. 重新提交作业（从 Savepoint）
+        # 获取作业模板
+        template = await self.get_job_template(flink_job.template_id)
+        if not template:
+            raise ValueError(f"作业模板不存在: {flink_job.template_id}")
+        
+        # 构建提交请求
+        submit_request = FlinkJobSubmitRequest(
+            template_id=flink_job.template_id,
+            job_id=job_id,
+            job_name=flink_job.job_name,
+            job_config=flink_job.job_config,
+            savepoint_path=savepoint_path
+        )
+        
+        # 提交作业
+        result = await self.submit_job(submit_request)
+        
+        logger.info(f"作业恢复成功: {job_id}")
+        return {"status": "resumed", "job_id": job_id}
+    
+    async def cancel_job(self, job_id: str) -> Dict[str, Any]:
+        """
+        取消作业（立即停止，不创建 Savepoint）
+        
+        Args:
+            job_id: 作业ID（本地）
+            
+        Returns:
+            操作结果
+        """
+        # 1. 从 MongoDB 获取作业信息
+        db = mongodb.get_database()
+        collection = db.flink_jobs
+        
+        job_doc = await collection.find_one({"job_id": job_id})
+        if not job_doc:
+            raise ValueError(f"作业不存在: {job_id}")
+        
+        flink_job = FlinkJob(**job_doc)
+        
+        if not flink_job.flink_job_id:
+            raise ValueError(f"作业未提交到 Flink 集群: {job_id}")
+        
+        # 2. 取消 Flink 作业
+        logger.info(f"取消作业: {job_id}, Flink Job ID: {flink_job.flink_job_id}")
+        result = await self.cancel_flink_job(flink_job.flink_job_id)
+        
+        # 3. 更新作业状态
+        await collection.update_one(
+            {"job_id": job_id},
+            {
+                "$set": {
+                    "status": JobStatus.CANCELLED.value,
+                    "end_time": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        
+        logger.info(f"作业取消成功: {job_id}")
         return result
     
     async def get_job(self, job_id: str) -> Optional[FlinkJob]:
@@ -1065,8 +1248,17 @@ if __name__ == '__main__':
                 return await self._sync_from_flink(flink_job)
             
             # 尝试从 K8s Job 获取 Flink Job ID
-            k8s_job_name = f"flink-py-{job_id.replace('_', '-')}"[:63]
-            k8s_job_name = k8s_job_name.rstrip('-')
+            # 注意：必须使用与创建 Job 时完全相同的命名规则
+            import re
+            safe_job_id = job_id.replace('_', '-').lower()
+            safe_job_id = re.sub(r'^[^a-z0-9]+|[^a-z0-9]+$', '', safe_job_id)
+            safe_job_id = re.sub(r'[^a-z0-9-]+', '-', safe_job_id)
+            k8s_job_name = f"flink-py-{safe_job_id}"[:63]
+            k8s_job_name = re.sub(r'-+$', '', k8s_job_name)
+            
+            if not k8s_job_name or k8s_job_name == 'flink-py':
+                logger.warning(f"无法生成有效的 K8s Job 名称: {job_id}")
+                return False
             
             # 查询 K8s Job
             try:
