@@ -283,7 +283,7 @@ rules:
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["pods"]
-    verbs: ["get", "list", "watch"]
+    verbs: ["create", "get", "list", "watch", "delete"]  # 添加 create 和 delete 权限
   - apiGroups: [""]
     resources: ["services"]
     verbs: ["get", "list", "watch"]
@@ -296,6 +296,10 @@ rules:
     verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
   - apiGroups: ["flink.apache.org"]
     resources: ["flinkdeployments/status"]
+    verbs: ["get", "list", "watch"]
+  # Deployments 权限（Flink TaskManager 需要）
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
     verbs: ["get", "list", "watch"]
   # HPA 权限（自动伸缩）
   - apiGroups: ["autoscaling"]
