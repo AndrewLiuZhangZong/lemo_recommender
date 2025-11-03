@@ -31,6 +31,7 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
 # 注意：不直接安装 apache-flink，使用 Flink 自带的 Python 支持
 # 只安装必要的 Python 库（Flink 脚本可能需要）
 RUN pip3 install --no-cache-dir \
+    protobuf==4.24.4 \
     pandas==2.1.4 \
     numpy==1.26.3 \
     kafka-python==2.0.2 \
