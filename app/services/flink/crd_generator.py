@@ -192,7 +192,7 @@ class FlinkCRDGenerator:
                 "imagePullPolicy": "IfNotPresent",
                 "flinkVersion": "v1_19",
                 "flinkConfiguration": self._build_flink_configuration(
-                    template, request, parallelism, autoscaler_config
+                    template, request, parallelism, autoscaler_config, jm_resources, tm_resources
                 ),
                 "serviceAccount": "lemo-service-recommender-sa",
                 "podTemplate": {
@@ -255,7 +255,9 @@ class FlinkCRDGenerator:
         template: JobTemplate,
         request: FlinkJobSubmitRequest,
         parallelism: int,
-        autoscaler_config: Dict[str, Any]
+        autoscaler_config: Dict[str, Any],
+        jm_resources: Dict[str, Any],
+        tm_resources: Dict[str, Any]
     ) -> Dict[str, str]:
         """
         构建 Flink 配置
@@ -265,6 +267,8 @@ class FlinkCRDGenerator:
             request: 提交请求
             parallelism: 并行度
             autoscaler_config: 自动伸缩配置
+            jm_resources: JobManager 资源配置
+            tm_resources: TaskManager 资源配置
             
         Returns:
             Flink 配置字典
@@ -277,20 +281,34 @@ class FlinkCRDGenerator:
             "state.checkpoints.dir": "file:///flink/checkpoints",
             "state.savepoints.dir": "file:///flink/savepoints",
             "execution.checkpointing.interval": str(template.config.get("checkpoint_interval", 300000)),
-            # Flink 内存配置（适配 512MB 小内存环境）
-            # 512MB 总内存 = JVM Metaspace (96MB) + Flink Memory (256MB) + JVM Overhead (160MB)
-            "taskmanager.memory.process.size": "512m",
-            "taskmanager.memory.flink.size": "256m",
-            "taskmanager.memory.jvm-metaspace.size": "96m",
-            "taskmanager.memory.jvm-overhead.min": "160m",
-            "taskmanager.memory.jvm-overhead.max": "160m",
             "taskmanager.memory.managed.fraction": "0.1",
-            "jobmanager.memory.process.size": "512m",
-            "jobmanager.memory.flink.size": "256m",
-            "jobmanager.memory.jvm-metaspace.size": "96m",
-            "jobmanager.memory.jvm-overhead.min": "160m",
-            "jobmanager.memory.jvm-overhead.max": "160m",
         }
+        
+        # 根据资源档位动态设置内存配置（只有在小内存环境才需要详细配置）
+        # 如果内存 <= 512MB，使用紧凑配置；否则让 Flink 自动计算
+        jm_memory = jm_resources["memory"]
+        tm_memory = tm_resources["memory"]
+        
+        # 解析内存大小（单位：MB）
+        jm_mem_mb = int(jm_memory.replace("m", "").replace("M", ""))
+        tm_mem_mb = int(tm_memory.replace("m", "").replace("M", ""))
+        
+        # 只有在 <= 512MB 的小内存环境才需要详细配置
+        if jm_mem_mb <= 512 or tm_mem_mb <= 512:
+            # 512MB 极限配置
+            config.update({
+                "taskmanager.memory.process.size": "512m",
+                "taskmanager.memory.flink.size": "256m",
+                "taskmanager.memory.jvm-metaspace.size": "96m",
+                "taskmanager.memory.jvm-overhead.min": "160m",
+                "taskmanager.memory.jvm-overhead.max": "160m",
+                "jobmanager.memory.process.size": "512m",
+                "jobmanager.memory.flink.size": "256m",
+                "jobmanager.memory.jvm-metaspace.size": "96m",
+                "jobmanager.memory.jvm-overhead.min": "160m",
+                "jobmanager.memory.jvm-overhead.max": "160m",
+            })
+        # 对于 >= 1GB 的配置，让 Flink 自动计算（更稳定）
         
         # 如果启用 Reactive Mode
         if autoscaler_config.get("mode") in ["reactive", "hpa_reactive"]:
