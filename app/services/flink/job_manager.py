@@ -96,18 +96,21 @@ class FlinkJobManager:
     
     async def get_flink_job_status(self, flink_job_id: str) -> Dict[str, Any]:
         """
-        获取 Flink 作业状态
+        获取 Flink 作业状态（支持 Operator 模式）
         
         Args:
-            flink_job_id: Flink Job ID
+            flink_job_id: Flink Job ID 或 FlinkDeployment 名称（Operator 模式）
             
         Returns:
             作业状态信息
         """
         try:
-            response = await self.client.get(f"/jobs/{flink_job_id}")
-            response.raise_for_status()
-            return response.json()
+            # Operator 模式：从 FlinkDeployment 获取状态
+            operator_status = await self.operator_manager.get_job_status(flink_job_id)
+            if operator_status:
+                return operator_status
+            else:
+                raise ValueError(f"无法获取作业状态: {flink_job_id}")
         except Exception as e:
             logger.error(f"获取作业状态失败: {e}")
             raise
@@ -1136,10 +1139,17 @@ if __name__ == '__main__':
         if flink_job.flink_job_id:
             logger.info(f"停止 Flink 作业: {flink_job.flink_job_id}")
             try:
-                if force:
-                    result = await self.cancel_flink_job(flink_job.flink_job_id)
+                # Operator 模式：通过 Operator API 停止
+                # flink_job_id 是 FlinkDeployment 名称
+                success = await self.operator_manager.stop_job(
+                    flink_job.flink_job_id,
+                    with_savepoint=not force
+                )
+                if success:
+                    result["status"] = "stopped_via_operator"
                 else:
-                    result = await self.stop_flink_job(flink_job.flink_job_id)
+                    logger.warning("Operator 停止作业失败")
+                    result["status"] = "stop_failed"
             except Exception as e:
                 logger.warning(f"停止 Flink 作业失败（可能已经停止）: {e}")
         else:
@@ -1234,7 +1244,15 @@ if __name__ == '__main__':
         # 2. 暂停 Flink 作业（创建 Savepoint）
         logger.info(f"暂停作业: {job_id}, Flink Job ID: {flink_job.flink_job_id}")
         try:
-            result = await self.suspend_flink_job(flink_job.flink_job_id)
+            # Operator 模式：通过 Operator API 暂停（自动创建 Savepoint）
+            # flink_job_id 是 FlinkDeployment 名称
+            success = await self.operator_manager.stop_job(
+                flink_job.flink_job_id,
+                with_savepoint=True
+            )
+            if not success:
+                raise ValueError("Operator 暂停作业失败")
+            result = {"status": "suspended_via_operator"}
         except Exception as e:
             logger.error(f"暂停 Flink 作业失败: {e}")
             raise ValueError(f"暂停作业失败: {str(e)}")
