@@ -8,7 +8,24 @@
 
 set -e
 
-KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
+# 自动检测 kubeconfig 路径
+if [ -f "/root/k3s-jd-config.yaml" ]; then
+    KUBECONFIG="/root/k3s-jd-config.yaml"
+elif [ -f "$(pwd)/k8s-deploy/k3s-jd-config.yaml" ]; then
+    KUBECONFIG="$(pwd)/k8s-deploy/k3s-jd-config.yaml"
+elif [ -f "/etc/rancher/k3s/k3s.yaml" ]; then
+    KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
+else
+    echo "✗ 找不到 kubeconfig 文件"
+    echo "请将 k3s-jd-config.yaml 放到以下位置之一："
+    echo "  - /root/k3s-jd-config.yaml"
+    echo "  - $(pwd)/k8s-deploy/k3s-jd-config.yaml"
+    echo "或者设置 KUBECONFIG 环境变量"
+    exit 1
+fi
+
+echo "使用 kubeconfig: $KUBECONFIG"
+export KUBECONFIG
 
 echo "========================================"
 echo "Flink Kubernetes Operator 安装脚本"
@@ -20,13 +37,13 @@ echo "步骤 1/4: 安装 cert-manager..."
 echo "cert-manager 是 Flink Operator 的依赖，用于管理 TLS 证书"
 echo ""
 
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.8.2/cert-manager.yaml --kubeconfig="$KUBECONFIG"
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.8.2/cert-manager.yaml
 
 echo ""
 echo "等待 cert-manager 就绪（最多5分钟）..."
-kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=300s --kubeconfig="$KUBECONFIG" || {
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=300s || {
     echo "⚠️  cert-manager Pod 启动超时，请检查："
-    kubectl get pods -n cert-manager --kubeconfig="$KUBECONFIG"
+    kubectl get pods -n cert-manager
     exit 1
 }
 
@@ -35,7 +52,7 @@ echo ""
 
 # 2. 创建 Flink Operator 命名空间
 echo "步骤 2/4: 创建 flink-operator-system 命名空间..."
-kubectl create namespace flink-operator-system --kubeconfig="$KUBECONFIG" || echo "命名空间已存在"
+kubectl create namespace flink-operator-system || echo "命名空间已存在"
 echo "✓ 命名空间创建完成"
 echo ""
 
@@ -52,8 +69,7 @@ if command -v helm &> /dev/null; then
     echo "使用 Helm 安装 Flink Kubernetes Operator..."
     helm install flink-kubernetes-operator flink-operator-repo/flink-kubernetes-operator \
       --namespace flink-operator-system \
-      --set webhook.create=false \
-      --kubeconfig="$KUBECONFIG"
+      --set webhook.create=false
     
     echo "✓ Flink Operator 安装完成（通过 Helm）"
 else
@@ -66,7 +82,7 @@ else
         https://github.com/apache/flink-kubernetes-operator/releases/download/release-1.7.0/flink-kubernetes-operator-1.7.0.yaml
     
     echo "安装 Flink Operator..."
-    kubectl apply -f /tmp/flink-kubernetes-operator-1.7.0.yaml --kubeconfig="$KUBECONFIG"
+    kubectl apply -f /tmp/flink-kubernetes-operator-1.7.0.yaml
     
     echo "✓ Flink Operator 安装完成（通过 kubectl）"
 fi
@@ -79,16 +95,16 @@ echo ""
 
 echo "等待 Operator Pod 就绪（最多5分钟）..."
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=flink-kubernetes-operator \
-    -n flink-operator-system --timeout=300s --kubeconfig="$KUBECONFIG" || {
+    -n flink-operator-system --timeout=300s || {
     echo "⚠️  Flink Operator Pod 启动超时，请检查："
-    kubectl get pods -n flink-operator-system --kubeconfig="$KUBECONFIG"
-    kubectl describe pod -l app.kubernetes.io/name=flink-kubernetes-operator -n flink-operator-system --kubeconfig="$KUBECONFIG"
+    kubectl get pods -n flink-operator-system
+    kubectl describe pod -l app.kubernetes.io/name=flink-kubernetes-operator -n flink-operator-system
     exit 1
 }
 
 echo ""
 echo "检查 CRD 是否安装..."
-kubectl get crd | grep flink --kubeconfig="$KUBECONFIG" || {
+kubectl get crd | grep flink || {
     echo "✗ FlinkDeployment CRD 未找到，安装失败"
     exit 1
 }
@@ -99,8 +115,8 @@ echo "✓ Flink Kubernetes Operator 安装成功！"
 echo "========================================"
 echo ""
 echo "验证命令："
-echo "  kubectl get pods -n flink-operator-system --kubeconfig=$KUBECONFIG"
-echo "  kubectl get crd | grep flink --kubeconfig=$KUBECONFIG"
+echo "  kubectl get pods -n flink-operator-system"
+echo "  kubectl get crd | grep flink"
 echo ""
 echo "下一步：执行阶段2 - 代码改造"
 echo ""
