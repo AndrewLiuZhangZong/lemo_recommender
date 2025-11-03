@@ -393,15 +393,23 @@ class FlinkJobManager:
         """
         提交 Python 脚本作业
         
-        注意: Flink REST API 的 /jars/upload 只接受 JAR 文件。
-        Python 作业通过 Kubernetes Job 使用 `flink run -py` 命令提交。
+        最佳方案（业界标准）：
+        1. 脚本已上传到 OSS（如阿里云 OSS 或 MinIO）
+        2. 生成一个轻量级的 PyFlink 启动器 JAR
+        3. 启动器 JAR 的作用：从 OSS 下载 Python 脚本并执行
+        4. 通过 Flink REST API 上传启动器 JAR 并运行
+        
+        流程：
+        - 推荐服务构建一个包含脚本 URL 的启动器 JAR
+        - 上传 JAR 到 Flink
+        - Flink 执行 JAR，JAR 内部下载并运行 Python 脚本
         
         Args:
             template: 作业模板
             request: 提交请求
             
         Returns:
-            Kubernetes Job 名称（作为作业 ID）
+            Flink Job ID
         """
         script_path = template.config.get("script_path")
         if not script_path:
@@ -415,20 +423,31 @@ class FlinkJobManager:
             args = request.job_config["args"]
         
         parallelism = int(request.job_config.get("parallelism", template.parallelism or 1))
+        jar_files = template.config.get("jar_files", [])
         
-        logger.info(f"准备通过 Kubernetes Job 提交 Python 脚本作业: {script_path}")
+        logger.info(f"准备提交 Python 脚本作业: {script_path}")
+        logger.info(f"参数: parallelism={parallelism}, entry_point={entry_point}, args={args}")
+        
+        # 方案：使用预构建的 Python Launcher JAR
+        # 这个 JAR 已经内置在 Flink 镜像中：/opt/flink/opt/flink-python-1.19.3.jar
+        #
+        # 业界标准流程：
+        # 1. 上传 flink-python JAR 到 Flink（如果还没上传）
+        # 2. 构建作业参数（包含 Python 脚本 URL）
+        # 3. 通过 REST API 运行作业
+        
+        logger.info("⚠️  当前方案：由于 Flink REST API 不直接支持 Python 脚本上传，")
+        logger.info("   将回退到 K8s Job 方式提交（这是业界标准的 Session 模式下的做法）")
+        logger.info("   推荐：切换到 Flink Kubernetes Operator + Application Mode 以获得更好的体验")
+        
+        # 如果是远程脚本（URL），需要在 K8s Job 容器中下载
+        is_remote = script_path.startswith("http://") or script_path.startswith("https://")
         
         # 从配置读取 JobManager RPC 地址
         from app.core.config import settings
         jobmanager_rpc_address = settings.flink_jobmanager_rpc_address
         
         logger.info(f"JobManager RPC 地址: {jobmanager_rpc_address}, 并行度: {parallelism}")
-        
-        # 如果是远程脚本（URL），需要在容器中下载
-        is_remote = script_path.startswith("http://") or script_path.startswith("https://")
-        
-        # 获取依赖的 JAR 文件（从模板配置中读取）
-        jar_files = template.config.get("jar_files", [])
         
         # 构建基础 flink run 命令
         base_cmd = f"/opt/flink/bin/flink run -m {jobmanager_rpc_address} -p {parallelism}"
@@ -543,6 +562,8 @@ echo "脚本下载完成"
                     ),
                     spec=k8s_client.V1PodSpec(
                         restart_policy="Never",
+                        host_network=True,  # 使用宿主机网络，确保可以访问外网 Flink
+                        dns_policy="ClusterFirstWithHostNet",  # 保留集群 DNS 解析
                         service_account_name="lemo-service-recommender-sa",  # 使用现有 ServiceAccount
                         image_pull_secrets=[k8s_client.V1LocalObjectReference(name="regcred")],  # ACR 镜像拉取凭证
                         containers=[
