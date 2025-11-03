@@ -1039,11 +1039,24 @@ if __name__ == '__main__':
         flink_job = FlinkJob(**job_doc)
         
         if not flink_job.flink_job_id:
-            raise ValueError(f"作业未提交到 Flink 集群: {job_id}")
+            # 作业还没提交到 Flink，直接标记为暂停
+            logger.warning(f"作业尚未提交到 Flink，无法创建 Savepoint: {job_id}")
+            await collection.update_one(
+                {"job_id": job_id},
+                {"$set": {
+                    "status": JobStatus.SUSPENDED.value,
+                    "updated_at": datetime.utcnow()
+                }}
+            )
+            return {"status": "suspended_without_savepoint"}
         
         # 2. 暂停 Flink 作业（创建 Savepoint）
         logger.info(f"暂停作业: {job_id}, Flink Job ID: {flink_job.flink_job_id}")
-        result = await self.suspend_flink_job(flink_job.flink_job_id)
+        try:
+            result = await self.suspend_flink_job(flink_job.flink_job_id)
+        except Exception as e:
+            logger.error(f"暂停 Flink 作业失败: {e}")
+            raise ValueError(f"暂停作业失败: {str(e)}")
         
         # 3. 更新作业状态
         update_data = {
@@ -1118,43 +1131,17 @@ if __name__ == '__main__':
         """
         取消作业（立即停止，不创建 Savepoint）
         
+        注意：cancel_job 与 stop_job(force=True) 功能相同
+        
         Args:
             job_id: 作业ID（本地）
             
         Returns:
             操作结果
         """
-        # 1. 从 MongoDB 获取作业信息
-        db = mongodb.get_database()
-        collection = db.flink_jobs
-        
-        job_doc = await collection.find_one({"job_id": job_id})
-        if not job_doc:
-            raise ValueError(f"作业不存在: {job_id}")
-        
-        flink_job = FlinkJob(**job_doc)
-        
-        if not flink_job.flink_job_id:
-            raise ValueError(f"作业未提交到 Flink 集群: {job_id}")
-        
-        # 2. 取消 Flink 作业
-        logger.info(f"取消作业: {job_id}, Flink Job ID: {flink_job.flink_job_id}")
-        result = await self.cancel_flink_job(flink_job.flink_job_id)
-        
-        # 3. 更新作业状态
-        await collection.update_one(
-            {"job_id": job_id},
-            {
-                "$set": {
-                    "status": JobStatus.CANCELLED.value,
-                    "end_time": datetime.utcnow().isoformat(),
-                    "updated_at": datetime.utcnow()
-                }
-            }
-        )
-        
-        logger.info(f"作业取消成功: {job_id}")
-        return result
+        # 直接调用 stop_job，force=True 表示立即取消
+        logger.info(f"取消作业（调用 stop_job force=True）: {job_id}")
+        return await self.stop_job(job_id, force=True)
     
     async def get_job(self, job_id: str) -> Optional[FlinkJob]:
         """获取作业信息"""
