@@ -414,7 +414,7 @@ class FlinkJobManager:
         if "args" in request.job_config:
             args = request.job_config["args"]
         
-        parallelism = request.job_config.get("parallelism", template.parallelism)
+        parallelism = int(request.job_config.get("parallelism", template.parallelism or 1))
         
         logger.info(f"准备通过 Kubernetes Job 提交 Python 脚本作业: {script_path}")
         
@@ -422,26 +422,35 @@ class FlinkJobManager:
         from app.core.config import settings
         jobmanager_rpc_address = settings.flink_jobmanager_rpc_address
         
-        logger.info(f"JobManager RPC 地址: {jobmanager_rpc_address}")
+        logger.info(f"JobManager RPC 地址: {jobmanager_rpc_address}, 并行度: {parallelism}")
         
-        # 构建 flink run 命令
-        # 使用 -m 指定 JobManager 地址（标准用法）
-        flink_command = [
-            "/opt/flink/bin/flink", "run",
-            "-m", jobmanager_rpc_address,  # JobManager RPC 地址
-            "-p", str(parallelism),
-            "-py", script_path,
-        ]
+        # 如果是远程脚本（URL），需要在容器中下载
+        is_remote = script_path.startswith("http://") or script_path.startswith("https://")
+        
+        if is_remote:
+            # 构建下载并执行的命令
+            script_filename = script_path.split("/")[-1]
+            flink_command_str = f"""
+set -e
+echo "下载 Python 脚本: {script_path}"
+wget -O /tmp/{script_filename} {script_path}
+echo "脚本下载完成"
+echo "开始提交 Flink 作业..."
+/opt/flink/bin/flink run -m {jobmanager_rpc_address} -p {parallelism} -py /tmp/{script_filename}
+"""
+        else:
+            # 本地文件路径
+            flink_command_str = f"/opt/flink/bin/flink run -m {jobmanager_rpc_address} -p {parallelism} -py {script_path}"
         
         # 添加入口点（如果指定）
         if entry_point and entry_point != "main":
-            flink_command.extend(["-pym", entry_point])
+            flink_command_str += f" -pym {entry_point}"
         
         # 添加用户参数
         if args:
-            flink_command.extend(args)
+            flink_command_str += " " + " ".join(args)
         
-        logger.info(f"Flink 命令: {' '.join(flink_command)}")
+        logger.info(f"Flink 命令脚本:\n{flink_command_str}")
         
         # 创建 Kubernetes Job
         from kubernetes import client as k8s_client, config as k8s_config
@@ -505,7 +514,7 @@ class FlinkJobManager:
                                 image="registry.cn-beijing.aliyuncs.com/lemo_zls/flink-python:latest",
                                 image_pull_policy="IfNotPresent",
                                 command=["/bin/bash", "-c"],
-                                args=[" ".join(flink_command)],
+                                args=[flink_command_str],  # 使用完整的命令脚本字符串
                                 env=[
                                     k8s_client.V1EnvVar(name="FLINK_REST_URL", value=self.flink_rest_url),
                                 ],
