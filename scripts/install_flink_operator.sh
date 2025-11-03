@@ -37,7 +37,21 @@ echo "步骤 1/4: 安装 cert-manager..."
 echo "cert-manager 是 Flink Operator 的依赖，用于管理 TLS 证书"
 echo ""
 
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.8.2/cert-manager.yaml
+# 使用国内镜像加速
+echo "使用阿里云镜像加速..."
+CERT_MANAGER_VERSION="v1.8.2"
+CERT_MANAGER_URL="https://ghproxy.com/https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml"
+
+# 下载到本地
+wget -O /tmp/cert-manager.yaml "$CERT_MANAGER_URL" || {
+    echo "⚠️  从镜像源下载失败，尝试直接访问 GitHub..."
+    wget -O /tmp/cert-manager.yaml "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml" || {
+        echo "✗ 下载 cert-manager 失败"
+        exit 1
+    }
+}
+
+kubectl apply -f /tmp/cert-manager.yaml
 
 echo ""
 echo "等待 cert-manager 就绪（最多5分钟）..."
@@ -56,36 +70,34 @@ kubectl create namespace flink-operator-system || echo "命名空间已存在"
 echo "✓ 命名空间创建完成"
 echo ""
 
-# 3. 添加 Helm 仓库（如果已安装 Helm）
-echo "步骤 3/4: 检查 Helm 是否安装..."
-if command -v helm &> /dev/null; then
-    echo "✓ Helm 已安装"
-    echo ""
-    echo "添加 Flink Operator Helm 仓库..."
-    helm repo add flink-operator-repo https://downloads.apache.org/flink/flink-kubernetes-operator-1.7.0/
-    helm repo update
-    
-    echo ""
-    echo "使用 Helm 安装 Flink Kubernetes Operator..."
-    helm install flink-kubernetes-operator flink-operator-repo/flink-kubernetes-operator \
-      --namespace flink-operator-system \
-      --set webhook.create=false
-    
-    echo "✓ Flink Operator 安装完成（通过 Helm）"
-else
-    echo "⚠️  Helm 未安装，使用 kubectl 直接安装..."
-    echo ""
-    
-    # 下载并安装 Operator YAML
-    echo "下载 Flink Operator manifests..."
-    wget -O /tmp/flink-kubernetes-operator-1.7.0.yaml \
-        https://github.com/apache/flink-kubernetes-operator/releases/download/release-1.7.0/flink-kubernetes-operator-1.7.0.yaml
-    
-    echo "安装 Flink Operator..."
-    kubectl apply -f /tmp/flink-kubernetes-operator-1.7.0.yaml
-    
-    echo "✓ Flink Operator 安装完成（通过 kubectl）"
-fi
+# 3. 安装 Flink Kubernetes Operator
+echo "步骤 3/4: 安装 Flink Kubernetes Operator..."
+echo ""
+
+FLINK_OPERATOR_VERSION="1.7.0"
+FLINK_OPERATOR_RELEASE="release-${FLINK_OPERATOR_VERSION}"
+
+# 优先使用 kubectl 直接安装（更简单可靠）
+echo "下载 Flink Operator manifests..."
+FLINK_OPERATOR_URL="https://ghproxy.com/https://github.com/apache/flink-kubernetes-operator/releases/download/${FLINK_OPERATOR_RELEASE}/flink-kubernetes-operator-${FLINK_OPERATOR_VERSION}.yaml"
+
+wget -O /tmp/flink-kubernetes-operator.yaml "$FLINK_OPERATOR_URL" || {
+    echo "⚠️  从镜像源下载失败，尝试直接访问 GitHub..."
+    wget -O /tmp/flink-kubernetes-operator.yaml \
+        "https://github.com/apache/flink-kubernetes-operator/releases/download/${FLINK_OPERATOR_RELEASE}/flink-kubernetes-operator-${FLINK_OPERATOR_VERSION}.yaml" || {
+        echo "⚠️  GitHub 访问失败，尝试从 Apache 官网下载..."
+        wget -O /tmp/flink-kubernetes-operator.yaml \
+            "https://archive.apache.org/dist/flink/flink-kubernetes-operator-${FLINK_OPERATOR_VERSION}/flink-kubernetes-operator-${FLINK_OPERATOR_VERSION}.yaml" || {
+            echo "✗ 所有下载源均失败"
+            exit 1
+        }
+    }
+}
+
+echo "安装 Flink Operator..."
+kubectl apply -f /tmp/flink-kubernetes-operator.yaml
+
+echo "✓ Flink Operator 安装完成"
 
 echo ""
 
