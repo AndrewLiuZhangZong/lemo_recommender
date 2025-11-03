@@ -306,12 +306,13 @@ class FlinkJobManager:
             logger.error(f"更新作业模板失败: {e}", exc_info=True)
             raise RuntimeError(f"更新作业模板失败: {str(e)}") from e
     
-    async def delete_job_template(self, template_id: str) -> bool:
+    async def delete_job_template(self, template_id: str, force: bool = False) -> bool:
         """
         删除作业模板
         
         Args:
             template_id: 模板 ID
+            force: 是否强制删除（即使有关联的作业实例）
             
         Returns:
             是否成功
@@ -322,13 +323,49 @@ class FlinkJobManager:
                 raise RuntimeError("MongoDB 数据库连接未建立")
             
             collection = db.job_templates
-            logger.info(f"准备删除作业模板: template_id={template_id}")
+            logger.info(f"准备删除作业模板: template_id={template_id}, force={force}")
             
             # 检查模板是否存在
             existing = await collection.find_one({"template_id": template_id})
             if not existing:
                 logger.warning(f"模板不存在: {template_id}")
-                return False
+                raise ValueError(f"模板不存在: {template_id}")
+            
+            # 检查是否有关联的作业实例
+            jobs_collection = db.flink_jobs
+            related_jobs = await jobs_collection.count_documents({"template_id": template_id})
+            
+            if related_jobs > 0:
+                logger.warning(f"模板 {template_id} 有 {related_jobs} 个关联的作业实例")
+                
+                if not force:
+                    # 非强制模式：不允许删除
+                    raise ValueError(
+                        f"模板有 {related_jobs} 个关联的作业实例，无法删除。"
+                        f"请先删除所有关联作业，或使用强制删除模式"
+                    )
+                
+                # 强制模式：删除所有关联的作业实例
+                logger.info(f"强制删除模式：正在删除 {related_jobs} 个关联作业...")
+                
+                # 先停止所有运行中的作业
+                running_jobs = []
+                async for job_doc in jobs_collection.find({"template_id": template_id}):
+                    job = FlinkJob(**job_doc)
+                    if job.status in [JobStatus.RUNNING, JobStatus.RECONCILING]:
+                        running_jobs.append(job)
+                
+                # 尝试停止运行中的作业
+                for job in running_jobs:
+                    try:
+                        logger.info(f"停止作业: {job.job_id}")
+                        await self.stop_job(job.job_id)
+                    except Exception as e:
+                        logger.error(f"停止作业失败 {job.job_id}: {e}")
+                
+                # 删除所有关联的作业记录
+                delete_result = await jobs_collection.delete_many({"template_id": template_id})
+                logger.info(f"已删除 {delete_result.deleted_count} 个关联作业记录")
             
             # 删除模板
             result = await collection.delete_one({"template_id": template_id})
@@ -340,6 +377,10 @@ class FlinkJobManager:
             logger.info(f"✓ 作业模板删除成功: {template_id}")
             return True
             
+        except ValueError as e:
+            # 参数错误或业务逻辑错误，直接抛出
+            logger.error(f"删除作业模板失败: {e}")
+            raise
         except Exception as e:
             logger.error(f"删除作业模板失败: {e}", exc_info=True)
             raise RuntimeError(f"删除作业模板失败: {str(e)}") from e

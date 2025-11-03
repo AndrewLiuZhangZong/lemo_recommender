@@ -337,16 +337,25 @@ class FlinkJobServicer(flink_job_pb2_grpc.FlinkJobServiceServicer):
     ) -> "flink_job_pb2.DeleteJobTemplateResponse":
         """删除作业模板"""
         try:
-            logger.info(f"删除作业模板: template_id={request.template_id}")
+            force = request.force if hasattr(request, 'force') else False
+            logger.info(f"删除作业模板: template_id={request.template_id}, force={force}")
+            
+            # 先检查关联的作业数量
+            db = self.job_manager.client._client._get_io_loop()  # 获取 MongoDB 连接
+            from app.core.database import mongodb
+            db_instance = mongodb.get_database()
+            jobs_collection = db_instance.flink_jobs
+            related_jobs_count = await jobs_collection.count_documents({"template_id": request.template_id})
             
             # 调用服务
-            success = await self.job_manager.delete_job_template(request.template_id)
+            success = await self.job_manager.delete_job_template(request.template_id, force=force)
             
             if success:
-                logger.info(f"✓ 作业模板删除成功: {request.template_id}")
+                logger.info(f"✓ 作业模板删除成功: {request.template_id}, 删除了 {related_jobs_count} 个关联作业")
                 return flink_job_pb2.DeleteJobTemplateResponse(
                     success=True,
-                    message="删除成功"
+                    message=f"删除成功，共删除 {related_jobs_count} 个关联作业" if related_jobs_count > 0 else "删除成功",
+                    deleted_jobs_count=related_jobs_count
                 )
             else:
                 logger.warning(f"模板不存在或删除失败: {request.template_id}")
@@ -354,9 +363,20 @@ class FlinkJobServicer(flink_job_pb2_grpc.FlinkJobServiceServicer):
                 context.set_details(f"模板不存在: {request.template_id}")
                 return flink_job_pb2.DeleteJobTemplateResponse(
                     success=False,
-                    message="模板不存在"
+                    message="模板不存在",
+                    deleted_jobs_count=0
                 )
         
+        except ValueError as e:
+            # 业务逻辑错误（如有关联作业且未强制删除）
+            logger.warning(f"删除作业模板失败（业务限制）: {e}")
+            context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
+            context.set_details(str(e))
+            return flink_job_pb2.DeleteJobTemplateResponse(
+                success=False,
+                message=str(e),
+                deleted_jobs_count=0
+            )
         except Exception as e:
             logger.error(f"删除作业模板失败: {e}", exc_info=True)
             if context.code() == grpc.StatusCode.OK:
@@ -364,7 +384,8 @@ class FlinkJobServicer(flink_job_pb2_grpc.FlinkJobServiceServicer):
                 context.set_details(f"删除作业模板失败: {str(e)}")
             return flink_job_pb2.DeleteJobTemplateResponse(
                 success=False,
-                message=f"删除失败: {str(e)}"
+                message=f"删除失败: {str(e)}",
+                deleted_jobs_count=0
             )
     
     async def SubmitJob(

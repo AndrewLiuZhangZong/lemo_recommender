@@ -177,18 +177,22 @@ class UpdateJobTemplateResponse(_message.Message):
     def __init__(self, template: _Optional[_Union[JobTemplate, _Mapping]] = ...) -> None: ...
 
 class DeleteJobTemplateRequest(_message.Message):
-    __slots__ = ("template_id",)
+    __slots__ = ("template_id", "force")
     TEMPLATE_ID_FIELD_NUMBER: _ClassVar[int]
+    FORCE_FIELD_NUMBER: _ClassVar[int]
     template_id: str
-    def __init__(self, template_id: _Optional[str] = ...) -> None: ...
+    force: bool
+    def __init__(self, template_id: _Optional[str] = ..., force: bool = ...) -> None: ...
 
 class DeleteJobTemplateResponse(_message.Message):
-    __slots__ = ("success", "message")
+    __slots__ = ("success", "message", "deleted_jobs_count")
     SUCCESS_FIELD_NUMBER: _ClassVar[int]
     MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    DELETED_JOBS_COUNT_FIELD_NUMBER: _ClassVar[int]
     success: bool
     message: str
-    def __init__(self, success: bool = ..., message: _Optional[str] = ...) -> None: ...
+    deleted_jobs_count: int
+    def __init__(self, success: bool = ..., message: _Optional[str] = ..., deleted_jobs_count: _Optional[int] = ...) -> None: ...
 
 class GetJobTemplateRequest(_message.Message):
     __slots__ = ("template_id",)
