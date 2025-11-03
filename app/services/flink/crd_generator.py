@@ -8,6 +8,36 @@ from app.models.flink_job_template import JobTemplate, FlinkJobSubmitRequest
 import re
 
 
+# 业界标准：预定义资源档位（参考阿里云 Flink、AWS Kinesis）
+RESOURCE_PROFILES = {
+    "micro": {
+        "jobmanager": {"cpu": 0.2, "memory": "256m"},
+        "taskmanager": {"cpu": 0.2, "memory": "256m"},
+        "description": "测试/开发环境，极小数据量"
+    },
+    "small": {
+        "jobmanager": {"cpu": 0.5, "memory": "512m"},
+        "taskmanager": {"cpu": 0.5, "memory": "512m"},
+        "description": "小规模生产，QPS < 1000"
+    },
+    "medium": {
+        "jobmanager": {"cpu": 1.0, "memory": "1024m"},
+        "taskmanager": {"cpu": 1.0, "memory": "1024m"},
+        "description": "中等规模生产，QPS 1000-10000"
+    },
+    "large": {
+        "jobmanager": {"cpu": 2.0, "memory": "2048m"},
+        "taskmanager": {"cpu": 2.0, "memory": "2048m"},
+        "description": "大规模生产，QPS 10000-100000"
+    },
+    "xlarge": {
+        "jobmanager": {"cpu": 4.0, "memory": "4096m"},
+        "taskmanager": {"cpu": 4.0, "memory": "4096m"},
+        "description": "超大规模生产，QPS > 100000"
+    }
+}
+
+
 class FlinkCRDGenerator:
     """Flink CRD 生成器"""
     
@@ -48,6 +78,9 @@ class FlinkCRDGenerator:
         # 构建环境变量
         env_vars = self._build_env_vars(template, request, script_path, jar_files)
         
+        # 获取资源配置（支持资源档位）
+        jm_resources, tm_resources = self._get_resource_config(template, request)
+        
         # 构建 FlinkDeployment CRD
         crd = {
             "apiVersion": "flink.apache.org/v1beta1",
@@ -85,14 +118,14 @@ class FlinkCRDGenerator:
                 },
                 "jobManager": {
                     "resource": {
-                        "memory": template.config.get("jobmanager_memory", "1024m"),
-                        "cpu": template.config.get("jobmanager_cpu", 1)
+                        "memory": jm_resources["memory"],
+                        "cpu": jm_resources["cpu"]
                     }
                 },
                 "taskManager": {
                     "resource": {
-                        "memory": template.config.get("taskmanager_memory", "1024m"),
-                        "cpu": template.config.get("taskmanager_cpu", 1)
+                        "memory": tm_resources["memory"],
+                        "cpu": tm_resources["cpu"]
                     },
                     "replicas": max(1, parallelism // 4)  # 每个 TM 4个 slot
                 },
@@ -126,6 +159,56 @@ class FlinkCRDGenerator:
             ]
         
         return crd
+    
+    def _get_resource_config(
+        self,
+        template: JobTemplate,
+        request: FlinkJobSubmitRequest
+    ) -> tuple[Dict[str, Any], Dict[str, Any]]:
+        """
+        获取资源配置（支持资源档位）
+        
+        优先级：
+        1. 请求参数中的 resource_profile（资源档位）
+        2. 模板配置中的 jobmanager_cpu/memory 等
+        3. 默认使用 micro 档位
+        
+        Args:
+            template: 作业模板
+            request: 提交请求
+            
+        Returns:
+            (jobmanager_resources, taskmanager_resources)
+        """
+        # 1. 检查请求参数中是否指定了资源档位
+        resource_profile = request.job_config.get("resource_profile")
+        
+        if resource_profile and resource_profile in RESOURCE_PROFILES:
+            # 使用预定义的资源档位
+            profile = RESOURCE_PROFILES[resource_profile]
+            return profile["jobmanager"], profile["taskmanager"]
+        
+        # 2. 检查模板配置中是否有自定义资源配置
+        jm_cpu = template.config.get("jobmanager_cpu") or request.job_config.get("jobmanager_cpu")
+        jm_memory = template.config.get("jobmanager_memory") or request.job_config.get("jobmanager_memory")
+        tm_cpu = template.config.get("taskmanager_cpu") or request.job_config.get("taskmanager_cpu")
+        tm_memory = template.config.get("taskmanager_memory") or request.job_config.get("taskmanager_memory")
+        
+        if jm_cpu or jm_memory or tm_cpu or tm_memory:
+            # 使用自定义资源配置
+            jm_resources = {
+                "cpu": jm_cpu or RESOURCE_PROFILES["micro"]["jobmanager"]["cpu"],
+                "memory": jm_memory or RESOURCE_PROFILES["micro"]["jobmanager"]["memory"]
+            }
+            tm_resources = {
+                "cpu": tm_cpu or RESOURCE_PROFILES["micro"]["taskmanager"]["cpu"],
+                "memory": tm_memory or RESOURCE_PROFILES["micro"]["taskmanager"]["memory"]
+            }
+            return jm_resources, tm_resources
+        
+        # 3. 默认使用 micro 档位（适合测试和小规模生产）
+        profile = RESOURCE_PROFILES["micro"]
+        return profile["jobmanager"], profile["taskmanager"]
     
     def _generate_resource_name(self, job_id: str) -> str:
         """
