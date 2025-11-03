@@ -8,7 +8,7 @@
 
 set -e
 
-KUBECONFIG="/root/k3s-jd-config.yaml"
+KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
 
 echo "========================================"
 echo "Flink Kubernetes Operator 安装脚本"
