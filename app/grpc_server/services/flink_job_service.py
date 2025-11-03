@@ -345,7 +345,7 @@ class FlinkJobServicer(flink_job_pb2_grpc.FlinkJobServiceServicer):
             # 先检查关联的作业数量（用于返回给前端）
             from app.core.database import mongodb
             db_instance = mongodb.get_database()
-            if db_instance:
+            if db_instance is not None:
                 jobs_collection = db_instance.flink_jobs
                 related_jobs_count = await jobs_collection.count_documents({"template_id": request.template_id})
             else:
