@@ -342,14 +342,16 @@ class FlinkJobServicer(flink_job_pb2_grpc.FlinkJobServiceServicer):
             force = request.force if hasattr(request, 'force') else False
             logger.info(f"删除作业模板: template_id={request.template_id}, force={force}")
             
-            # 先检查关联的作业数量
-            db = self.job_manager.client._client._get_io_loop()  # 获取 MongoDB 连接
+            # 先检查关联的作业数量（用于返回给前端）
             from app.core.database import mongodb
             db_instance = mongodb.get_database()
-            jobs_collection = db_instance.flink_jobs
-            related_jobs_count = await jobs_collection.count_documents({"template_id": request.template_id})
+            if db_instance:
+                jobs_collection = db_instance.flink_jobs
+                related_jobs_count = await jobs_collection.count_documents({"template_id": request.template_id})
+            else:
+                related_jobs_count = 0
             
-            # 调用服务
+            # 调用服务（内部也会检查并处理关联作业）
             success = await self.job_manager.delete_job_template(request.template_id, force=force)
             
             if success:
