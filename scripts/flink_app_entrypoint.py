@@ -89,7 +89,7 @@ def download_script() -> str:
 
 def download_jars():
     """
-    下载 JAR 依赖
+    下载 JAR 依赖并复制到 Flink lib 目录
     
     Returns:
         JAR 文件路径列表
@@ -105,8 +105,9 @@ def download_jars():
     
     log(f"需要下载 {len(jar_urls)} 个 JAR 依赖")
     
-    # 确保目录存在
+    # 确保临时目录和 Flink usrlib 目录存在
     os.makedirs("/tmp/flink-jars", exist_ok=True)
+    os.makedirs("/opt/flink/usrlib", exist_ok=True)
     
     jar_paths = []
     for i, jar_url in enumerate(jar_urls, 1):
@@ -114,13 +115,20 @@ def download_jars():
         if not jar_filename.endswith('.jar'):
             jar_filename += '.jar'
         
-        jar_path = f"/tmp/flink-jars/{jar_filename}"
+        temp_jar_path = f"/tmp/flink-jars/{jar_filename}"
         
         log(f"[{i}/{len(jar_urls)}] 下载 JAR: {jar_filename}")
-        if download_file(jar_url, jar_path):
-            jar_paths.append(jar_path)
-            # 将 JAR 添加到 CLASSPATH（可选）
-            os.environ['FLINK_CONF_DIR'] = '/opt/flink/conf'
+        if download_file(jar_url, temp_jar_path):
+            # 复制到 Flink usrlib 目录（PyFlink 会自动加载这个目录的 JAR）
+            usrlib_jar_path = f"/opt/flink/usrlib/{jar_filename}"
+            try:
+                import shutil
+                shutil.copy2(temp_jar_path, usrlib_jar_path)
+                log(f"✓ JAR 已复制到: {usrlib_jar_path}")
+                jar_paths.append(usrlib_jar_path)
+            except Exception as e:
+                log(f"⚠️  复制 JAR 失败: {e}，使用临时路径", "WARN")
+                jar_paths.append(temp_jar_path)
         else:
             log(f"⚠️  JAR 下载失败，继续执行: {jar_url}", "WARN")
     

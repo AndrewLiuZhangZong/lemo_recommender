@@ -45,6 +45,17 @@ def main():
     env = StreamExecutionEnvironment.get_execution_environment()
     env.set_parallelism(args.get('parallelism', 1))
     
+    # 添加 JAR 依赖（从 entrypoint.py 下载的 JAR）
+    import glob
+    jar_files = glob.glob("/tmp/flink-jars/*.jar")
+    if jar_files:
+        print(f"📦 加载 JAR 依赖: {len(jar_files)} 个")
+        for jar_file in jar_files:
+            env.add_jars(f"file://{jar_file}")
+            print(f"   - {os.path.basename(jar_file)}")
+    else:
+        print("⚠️  未找到 JAR 依赖文件")
+    
     # 配置 Checkpoint（如果启用）
     if args.get('enable_checkpoint', False):
         env.enable_checkpointing(args.get('checkpoint_interval', 60000))
