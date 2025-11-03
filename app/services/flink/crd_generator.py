@@ -64,6 +64,65 @@ AUTOSCALER_MODES = {
     "hpa_reactive": {
         "name": "HPA + Reactive（推荐）",
         "description": "结合 HPA 和 Reactive Mode，业界最佳实践"
+    },
+    "scheduled": {
+        "name": "定时伸缩",
+        "description": "按时间表自动调整资源（工作日高峰扩容）"
+    },
+    "scheduled_hpa": {
+        "name": "定时伸缩 + HPA",
+        "description": "定时调整基准 + HPA 动态伸缩（美团/字节实践）"
+    }
+}
+
+# 预定义的定时伸缩策略
+SCHEDULED_SCALING_PRESETS = {
+    "workday_peak": {
+        "name": "工作日高峰",
+        "description": "工作日 9:00-18:00 扩容，其他时间缩容",
+        "schedules": [
+            {
+                "name": "morning-scale-up",
+                "cron": "0 9 * * 1-5",  # 周一到周五 9:00
+                "min_replicas": 3,
+                "max_replicas": 10
+            },
+            {
+                "name": "evening-scale-down",
+                "cron": "0 18 * * 1-5",  # 周一到周五 18:00
+                "min_replicas": 1,
+                "max_replicas": 3
+            },
+            {
+                "name": "weekend-scale-down",
+                "cron": "0 0 * * 6",  # 周六 00:00
+                "min_replicas": 1,
+                "max_replicas": 2
+            }
+        ]
+    },
+    "24x7_peak": {
+        "name": "全天候高峰",
+        "description": "每天高峰时段（9:00-23:00）扩容",
+        "schedules": [
+            {
+                "name": "daily-scale-up",
+                "cron": "0 9 * * *",  # 每天 9:00
+                "min_replicas": 2,
+                "max_replicas": 8
+            },
+            {
+                "name": "daily-scale-down",
+                "cron": "0 23 * * *",  # 每天 23:00
+                "min_replicas": 1,
+                "max_replicas": 3
+            }
+        ]
+    },
+    "custom": {
+        "name": "自定义",
+        "description": "用户自定义定时伸缩规则",
+        "schedules": []
     }
 }
 
@@ -273,12 +332,65 @@ class FlinkCRDGenerator:
             80  # 默认 80%
         )
         
+        # 获取定时伸缩配置
+        scaling_schedule = None
+        if autoscaler_mode in ["scheduled", "scheduled_hpa"]:
+            scaling_schedule = self._get_scaling_schedule(template, request)
+        
         return {
             "mode": autoscaler_mode,
             "min_replicas": int(min_replicas),
             "max_replicas": int(max_replicas),
-            "target_cpu_utilization": int(target_cpu_utilization)
+            "target_cpu_utilization": int(target_cpu_utilization),
+            "scaling_schedule": scaling_schedule
         }
+    
+    def _get_scaling_schedule(
+        self,
+        template: JobTemplate,
+        request: FlinkJobSubmitRequest
+    ) -> Optional[Dict[str, Any]]:
+        """
+        获取定时伸缩配置
+        
+        Args:
+            template: 作业模板
+            request: 提交请求
+            
+        Returns:
+            定时伸缩配置
+        """
+        # 获取定时伸缩预设
+        scaling_preset = (
+            request.job_config.get("scaling_preset") or
+            template.config.get("scaling_preset")
+        )
+        
+        if scaling_preset and scaling_preset in SCHEDULED_SCALING_PRESETS:
+            # 使用预定义策略
+            preset = SCHEDULED_SCALING_PRESETS[scaling_preset]
+            return {
+                "preset": scaling_preset,
+                "name": preset["name"],
+                "description": preset["description"],
+                "schedules": preset["schedules"]
+            }
+        
+        # 自定义定时伸缩规则
+        custom_schedules = (
+            request.job_config.get("scaling_schedules") or
+            template.config.get("scaling_schedules")
+        )
+        
+        if custom_schedules and isinstance(custom_schedules, list):
+            return {
+                "preset": "custom",
+                "name": "自定义策略",
+                "description": "用户自定义的定时伸缩规则",
+                "schedules": custom_schedules
+            }
+        
+        return None
     
     def _get_resource_config(
         self,
