@@ -44,6 +44,12 @@ RUN pip3 install --no-cache-dir \
 RUN pip3 install --no-cache-dir \
     apache-flink-libraries==1.19.0
 
+# 下载 Kafka connector JAR（与 Flink 1.19 兼容）
+RUN cd /opt/flink/opt && \
+    wget -q https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/3.0.2-1.18/flink-sql-connector-kafka-3.0.2-1.18.jar && \
+    chmod 644 flink-sql-connector-kafka-3.0.2-1.18.jar && \
+    chown flink:flink flink-sql-connector-kafka-3.0.2-1.18.jar
+
 # 创建作业目录
 RUN mkdir -p /opt/flink/usrlib \
     && mkdir -p /opt/flink/python-archives \
