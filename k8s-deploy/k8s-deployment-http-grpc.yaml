@@ -12,7 +12,7 @@ data:
   LOG_LEVEL: "INFO"
   
   # MongoDB (外网服务器)
-  MONGODB_URL: "mongodb://lemo_user:lemo_password_2024@111.228.39.41:27017/lemo_recommender"
+  MONGODB_URL: "mongodb://lemo_user:lemo_password_2024@111.228.39.41:27017/lemo_recommender?serverSelectionTimeoutMS=60000&connectTimeoutMS=60000&socketTimeoutMS=60000"
   MONGODB_DATABASE: "lemo_recommender"
   
   # Redis (外网服务器)
