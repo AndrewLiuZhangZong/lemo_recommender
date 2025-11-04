@@ -218,7 +218,7 @@ class FlinkCRDGenerator:
             "spec": {
                 "image": self.app_image,  # flink-app 镜像已包含 PyFlink 支持
                 "imagePullPolicy": self._get_image_pull_policy(),
-                "flinkVersion": "v1_19",
+                "flinkVersion": "v2_0",  # Flink 2.0 最新版
                 "flinkConfiguration": self._build_flink_configuration(
                     template, request, parallelism, autoscaler_config, jm_resources, tm_resources
                 ),
@@ -244,7 +244,7 @@ class FlinkCRDGenerator:
                     "replicas": autoscaler_config.get("min_replicas", max(1, parallelism // 4))
                 },
                 "job": {
-                    "jarURI": "local:///opt/flink/opt/flink-python-2.0.0.jar",
+                    "jarURI": "local:///opt/flink/opt/flink-python_2.12-2.0.0.jar",  # Flink 2.0 Python JAR
                     "entryClass": "org.apache.flink.client.python.PythonDriver",
                     "args": [
                         "-py",
@@ -587,10 +587,11 @@ class FlinkCRDGenerator:
                 else:
                     # 是本地路径，尝试映射到 Maven URL
                     if "kafka" in jar:
+                        # Flink 2.0 对应的 Kafka Connector
                         resolved_jar_urls.append(
                             "https://repo1.maven.org/maven2/org/apache/flink/"
-                            "flink-sql-connector-kafka/3.0.2-1.18/"
-                            "flink-sql-connector-kafka-3.0.2-1.18.jar"
+                            "flink-sql-connector-kafka/3.3.0-2.0/"
+                            "flink-sql-connector-kafka-3.3.0-2.0.jar"
                         )
             
             if resolved_jar_urls:
