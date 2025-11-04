@@ -244,7 +244,7 @@ class FlinkCRDGenerator:
                     "replicas": autoscaler_config.get("min_replicas", max(1, parallelism // 4))
                 },
                 "job": {
-                    "jarURI": "local:///opt/flink/opt/flink-python-1.19.3.jar",
+                    "jarURI": "local:///opt/flink/opt/flink-python-2.0.0.jar",
                     "entryClass": "org.apache.flink.client.python.PythonDriver",
                     "args": [
                         "-py",

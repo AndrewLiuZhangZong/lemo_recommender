@@ -1,7 +1,7 @@
 # Flink Python 支持镜像
 # 基于官方 Flink 镜像，添加 Python 和 PyFlink 支持
 
-FROM flink:1.19-scala_2.12-java11
+FROM flink:2.0-scala_2.12-java11
 
 LABEL maintainer="Lemo Recommender Team"
 LABEL description="Flink with Python and PyFlink support for enterprise-grade job management"
@@ -30,7 +30,8 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # 安装 PyFlink（关键！必须与 Flink 运行时版本匹配）
 # apache-flink 提供 Python API，Flink 官方镜像只包含 Java 运行时
-RUN pip3 install --no-cache-dir apache-flink==1.19.0
+# 使用最新稳定版本（2025-10-28 发布）
+RUN pip3 install --no-cache-dir apache-flink==2.1.1
 
 # 安装必要的 Python 库（Flink 脚本可能需要）
 RUN pip3 install --no-cache-dir \
@@ -46,11 +47,11 @@ RUN pip3 install --no-cache-dir \
 
 # Flink 连接器通过 JAR 提供，不需要 Python 包
 
-# 下载 Kafka connector JAR（与 Flink 1.19 兼容）
+# 下载 Kafka connector JAR（与 Flink 2.0 兼容，使用最新版本）
 RUN cd /opt/flink/opt && \
-    wget -q https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/3.0.2-1.18/flink-sql-connector-kafka-3.0.2-1.18.jar && \
-    chmod 644 flink-sql-connector-kafka-3.0.2-1.18.jar && \
-    chown flink:flink flink-sql-connector-kafka-3.0.2-1.18.jar
+    wget -q https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/3.3.0-2.0/flink-sql-connector-kafka-3.3.0-2.0.jar && \
+    chmod 644 flink-sql-connector-kafka-3.3.0-2.0.jar && \
+    chown flink:flink flink-sql-connector-kafka-3.3.0-2.0.jar
 
 # 创建作业目录
 RUN mkdir -p /opt/flink/usrlib \

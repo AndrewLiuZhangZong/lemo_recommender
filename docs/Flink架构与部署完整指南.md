@@ -230,24 +230,29 @@ kubectl get crd | grep flink
 我们采用**两层镜像架构**，符合业界最佳实践（阿里云、字节跳动等大厂标准）：
 
 ```
-flink:1.19-scala_2.12-java11 (官方基础镜像)
+flink:2.0-scala_2.12-java11 (官方基础镜像 - 最新版)
   ↓
-flink-python:latest (添加 Python + PyFlink + 依赖库)
+flink-python:latest (添加 Python 3.11 + PyFlink 2.1.1 + 依赖库)
   ↓  
-flink-app:latest (添加脚本下载入口点)
+flink-app:latest (添加 entrypoint.py 脚本下载器)
 ```
 
 **镜像说明**：
 
 | 镜像 | 基础镜像 | 新增内容 | 用途 |
 |------|---------|---------|------|
-| `flink:1.19` | - | Flink 官方镜像 | 提供 Flink 运行时（Java） |
-| `flink-python:latest` | `flink:1.19` | Python 3.11 + **apache-flink==1.19.0** + 依赖库 | 提供 PyFlink API |
+| `flink:2.0` | - | Flink 官方镜像（最新版） | 提供 Flink 运行时（Java） |
+| `flink-python:latest` | `flink:2.0` | Python 3.11 + **apache-flink==2.1.1** + 依赖库 | 提供 PyFlink API |
 | `flink-app:latest` | `flink-python:latest` | `entrypoint.py` 脚本下载器 | 提供作业入口点 |
+
+**版本说明**（使用最新稳定版本）：
+- 🆕 **Flink 2.0.0**（2025-10-02 发布）
+- 🆕 **PyFlink 2.1.1**（2025-10-28 发布）
+- 🆕 **Kafka Connector 3.3.0-2.0**（匹配 Flink 2.0）
 
 **关键点**：
 - ✅ **必须安装 `apache-flink` Python 包**：Flink 官方镜像只包含 Java 运行时，不包含 Python API
-- ✅ **版本一致**：`apache-flink==1.19.0` 必须与 Flink 运行时版本匹配
+- ✅ **版本严格匹配**：PyFlink 2.1.1 兼容 Flink 2.0.x 运行时
 - ✅ **AMD64 架构**：K8s 节点是 AMD64，本地 Mac（ARM64）需要跨平台构建
 
 #### 4.2 构建步骤
@@ -284,7 +289,7 @@ docker run --rm registry.cn-beijing.aliyuncs.com/lemo_zls/flink-app:latest \
   python3 -c "import pyflink; print(f'PyFlink version: {pyflink.__version__}')"
 
 # 预期输出：
-# PyFlink version: 1.19.0
+# PyFlink version: 2.1.1
 
 # 验证 Python 库
 docker run --rm registry.cn-beijing.aliyuncs.com/lemo_zls/flink-app:latest \
