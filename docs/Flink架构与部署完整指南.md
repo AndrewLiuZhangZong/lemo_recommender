@@ -223,18 +223,72 @@ kubectl get crd | grep flink
 # flinksessionjobs.flink.apache.org     2025-11-03T05:33:55Z
 ```
 
-### 步骤4: 构建并推送 Flink Application 镜像
+### 步骤4: 构建并推送 Flink 镜像
+
+#### 4.1 镜像架构说明
+
+我们采用**两层镜像架构**，符合业界最佳实践（阿里云、字节跳动等大厂标准）：
+
+```
+flink:1.19-scala_2.12-java11 (官方基础镜像)
+  ↓
+flink-python:latest (添加 Python + PyFlink + 依赖库)
+  ↓  
+flink-app:latest (添加脚本下载入口点)
+```
+
+**镜像说明**：
+
+| 镜像 | 基础镜像 | 新增内容 | 用途 |
+|------|---------|---------|------|
+| `flink:1.19` | - | Flink 官方镜像 | 提供 Flink 运行时（Java） |
+| `flink-python:latest` | `flink:1.19` | Python 3.11 + **apache-flink==1.19.0** + 依赖库 | 提供 PyFlink API |
+| `flink-app:latest` | `flink-python:latest` | `entrypoint.py` 脚本下载器 | 提供作业入口点 |
+
+**关键点**：
+- ✅ **必须安装 `apache-flink` Python 包**：Flink 官方镜像只包含 Java 运行时，不包含 Python API
+- ✅ **版本一致**：`apache-flink==1.19.0` 必须与 Flink 运行时版本匹配
+- ✅ **AMD64 架构**：K8s 节点是 AMD64，本地 Mac（ARM64）需要跨平台构建
+
+#### 4.2 构建步骤
 
 ```bash
 cd /path/to/lemo_recommender
 
-# 构建镜像
-docker build -f Dockerfile.flink-app \
-  -t registry.cn-beijing.aliyuncs.com/lemo_zls/flink-app:latest .
+# 步骤1: 构建 flink-python 镜像（基础镜像）
+docker buildx build --platform linux/amd64 \
+  -t registry.cn-beijing.aliyuncs.com/lemo_zls/flink-python:latest \
+  -f Dockerfile.flink-python \
+  --push .
 
-# 推送到 ACR
-docker login registry.cn-beijing.aliyuncs.com
-docker push registry.cn-beijing.aliyuncs.com/lemo_zls/flink-app:latest
+# 步骤2: 构建 flink-app 镜像（应用镜像）
+docker buildx build --platform linux/amd64 \
+  -t registry.cn-beijing.aliyuncs.com/lemo_zls/flink-app:latest \
+  -f Dockerfile.flink-app \
+  --push .
+```
+
+**说明**：
+- `--platform linux/amd64`: 跨平台构建（Mac M1/M2 → AMD64）
+- `--push`: 构建完成后自动推送到 ACR
+- 必须先构建 `flink-python`，再构建 `flink-app`（依赖关系）
+
+#### 4.3 验证镜像
+
+```bash
+# 验证镜像已推送
+docker pull registry.cn-beijing.aliyuncs.com/lemo_zls/flink-app:latest
+
+# 验证 PyFlink 是否安装（关键！）
+docker run --rm registry.cn-beijing.aliyuncs.com/lemo_zls/flink-app:latest \
+  python3 -c "import pyflink; print(f'PyFlink version: {pyflink.__version__}')"
+
+# 预期输出：
+# PyFlink version: 1.19.0
+
+# 验证 Python 库
+docker run --rm registry.cn-beijing.aliyuncs.com/lemo_zls/flink-app:latest \
+  python3 -c "import pandas, numpy, kafka; print('✓ 依赖库正常')"
 ```
 
 ### 步骤5: 部署推荐服务

@@ -28,8 +28,11 @@ RUN apt-get update && \
 # 升级 pip
 RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# 注意：不直接安装 apache-flink，使用 Flink 自带的 Python 支持
-# 只安装必要的 Python 库（Flink 脚本可能需要）
+# 安装 PyFlink（关键！必须与 Flink 运行时版本匹配）
+# apache-flink 提供 Python API，Flink 官方镜像只包含 Java 运行时
+RUN pip3 install --no-cache-dir apache-flink==1.19.0
+
+# 安装必要的 Python 库（Flink 脚本可能需要）
 RUN pip3 install --no-cache-dir \
     protobuf==4.24.4 \
     pandas==2.1.4 \
