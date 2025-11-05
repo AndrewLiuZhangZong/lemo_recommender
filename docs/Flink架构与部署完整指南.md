@@ -1,15 +1,72 @@
-# Flink Kubernetes Operator 架构与部署完整指南
+# Flink 实时特征计算 - 架构与部署指南（v2.0）
+
+> **v2.0架构说明**：Flink作为固定的实时特征计算服务，采用Kubernetes Operator + Application Mode部署
 
 ## 📖 目录
 
-1. [架构概述](#架构概述)
-2. [核心组件](#核心组件)
-3. [部署架构](#部署架构)
+1. [Flink在推荐系统中的作用](#flink在推荐系统中的作用)
+2. [v2.0架构变化](#v2.0架构变化)
+3. [核心组件](#核心组件)
 4. [部署步骤](#部署步骤)
-5. [作业提交流程](#作业提交流程)
-6. [自动伸缩方案](#自动伸缩方案)
-7. [运维管理](#运维管理)
-8. [故障排查](#故障排查)
+5. [Flink作业说明](#flink作业说明)
+6. [运维管理](#运维管理)
+7. [故障排查](#故障排查)
+8. [高级功能：动态作业提交](#高级功能动态作业提交)
+
+---
+
+## 🎯 Flink在推荐系统中的作用
+
+### 核心职责
+
+Flink是推荐系统的**实时特征计算引擎**，7×24小时运行，处理4类核心任务：
+
+| 任务 | 输入 | 输出 | 用途 |
+|------|------|------|------|
+| **用户实时特征** | Kafka用户行为 | MongoDB/Redis | 近1小时观看/点赞数，活跃时段 |
+| **物品热度计算** | Kafka用户行为 | Redis ZSET | Top 1000热门物品（召回使用） |
+| **推荐指标统计** | Kafka用户行为 | Prometheus | CTR、观看时长、完播率（监控） |
+| **行为数据ETL** | Kafka用户行为 | ClickHouse | 实时写入OLAP（离线训练） |
+
+### 数据流
+
+```
+用户行为（点击/观看/点赞）
+  ↓
+Behavior Service → Kafka (user_behaviors topic)
+  ↓
+Flink实时计算（窗口聚合）
+  ↓
+  ├─→ Redis（实时特征，供Recall/Ranking使用）
+  ├─→ MongoDB（用户画像，持久化）
+  ├─→ Prometheus（监控指标，运营大盘）
+  └─→ ClickHouse（行为明细，离线训练）
+```
+
+---
+
+## 🔄 v2.0架构变化
+
+### 旧架构（已废弃）❌
+
+- ❌ 后台管理界面动态创建作业模板
+- ❌ 前端提交作业请求到HTTP API
+- ❌ Python后端动态生成FlinkDeployment YAML
+- ❌ 每个任务一个独立的FlinkDeployment
+
+**问题**：管理复杂、资源碎片化、不适合持续运行的实时服务
+
+### 新架构（v2.0）✅
+
+- ✅ **固定部署**：Flink作为独立微服务静态部署
+- ✅ **统一管理**：一个FlinkDeployment运行所有实时任务
+- ✅ **配置驱动**：从K8s ConfigMap读取配置，无需重启
+- ✅ **持续运行**：7×24小时运行，Flink Operator自动故障恢复
+
+**部署方式**：
+```bash
+kubectl apply -f k8s-deploy/flink-deployment-realtime-service.yaml
+```
 
 ---
 
@@ -17,7 +74,7 @@
 
 ### 设计理念
 
-我们采用 **Flink Kubernetes Operator + Application Mode** 架构，这是业界标准的云原生 Flink 部署方案，被阿里云、字节跳动、美团等公司广泛使用。
+v2.0采用 **Flink Kubernetes Operator + Application Mode + 固定部署** 架构，这是业界标准的云原生实时计算方案，被阿里云、字节跳动、美团等公司广泛使用。
 
 ### 核心优势
 
@@ -334,189 +391,149 @@ kubectl logs -n lemo-dev deployment/lemo-service-recommender-http | grep -i oper
 
 ---
 
-## 📋 作业提交流程
+## 📋 Flink作业说明
 
-### 整体流程图
+### v2.0架构中的Flink作业
 
-```
-用户在前端创建作业模板
-   │
-   ├─> 1. 前端提交作业请求
-   │      POST /api/v1/flink/jobs/submit
-   │      {
-   │        "template_id": "xxx",
-   │        "job_config": { "parallelism": 2 }
-   │      }
-   │
-   ├─> 2. Python 后端处理
-   │      ├─ job_manager.submit_job()
-   │      ├─ operator_manager.submit_job()
-   │      └─ crd_generator.generate_yaml()
-   │
-   ├─> 3. 生成 FlinkDeployment YAML
-   │      apiVersion: flink.apache.org/v1beta1
-   │      kind: FlinkDeployment
-   │      metadata:
-   │        name: job-xxx
-   │      spec:
-   │        image: flink-app:latest
-   │        jobManager: { memory: "1024m", cpu: 1 }
-   │        taskManager: { memory: "1024m", cpu: 1, replicas: 1 }
-   │        job:
-   │          jarURI: local:///opt/flink/opt/flink-python-1.19.3.jar
-   │          args: ["-py", "/opt/flink/usrlib/entrypoint.py"]
-   │        env:
-   │          - name: SCRIPT_URL
-   │            value: "https://file.lemo-ai.com/xxx.py"
-   │
-   ├─> 4. 通过 K8s API 创建 CRD
-   │      k8s_client.create_namespaced_custom_object(
-   │        group="flink.apache.org",
-   │        version="v1beta1",
-   │        namespace="lemo-dev",
-   │        plural="flinkdeployments",
-   │        body=flink_deployment_yaml
-   │      )
-   │
-   ├─> 5. Flink Operator 监听到 CRD
-   │      └─> 自动创建:
-   │          ├─ JobManager Pod
-   │          ├─ JobManager Service
-   │          ├─ TaskManager Pod(s)
-   │          └─ ConfigMap (Flink 配置)
-   │
-   ├─> 6. Flink 作业启动
-   │      ├─ JobManager 初始化
-   │      ├─ TaskManager 连接到 JobManager
-   │      ├─ 下载 Python 脚本 (entrypoint.py)
-   │      │   └─> 从 SCRIPT_URL 下载实际脚本
-   │      └─ 开始执行作业
-   │
-   └─> 7. 返回用户
-          {
-            "job_id": "job-xxx",
-            "status": "RUNNING",
-            "flink_job_id": "abc123..."
-          }
-```
+v2.0中，Flink作为**固定的实时特征服务**部署，包含4个核心作业：
 
-### 代码调用链
+#### 1. 用户实时特征计算（user_profile_updater.py）
 
-```python
-# 1. HTTP API
-@router.post("/jobs/submit")
-async def submit_job(request: FlinkJobSubmitRequest):
-    job_manager = get_flink_job_manager()
-    result = await job_manager.submit_job(template, request)
-    return result
+**功能**：实时聚合用户行为，生成用户特征
 
-# 2. Job Manager
-class FlinkJobManager:
-    async def submit_job(self, template, request):
-        # 通过 Operator 提交
-        flink_job_id = await self.operator_manager.submit_job(template, request)
-        return flink_job_id
-
-# 3. Operator Job Manager
-class OperatorJobManager:
-    async def submit_job(self, template, request):
-        # 生成 CRD YAML
-        crd_yaml = self.crd_generator.generate_yaml(template, request)
-        
-        # 创建 CRD
-        self.custom_api.create_namespaced_custom_object(
-            group="flink.apache.org",
-            version="v1beta1",
-            namespace=self.namespace,
-            plural="flinkdeployments",
-            body=crd_yaml
-        )
-        
-        return deployment_name
-
-# 4. CRD Generator
-class FlinkCRDGenerator:
-    def generate_yaml(self, template, request):
-        # 根据作业类型生成不同的配置
-        if template.job_type == "PYTHON_SCRIPT":
-            return self._generate_python_job(template, request)
-        elif template.job_type == "JAR":
-            return self._generate_jar_job(template, request)
-        elif template.job_type == "SQL":
-            return self._generate_sql_job(template, request)
-```
-
-### 支持的作业类型
-
-#### 1. Python 脚本作业
-
-**模板配置：**
+**输入**：Kafka `user_behaviors` topic
 ```json
 {
-  "job_type": "PYTHON_SCRIPT",
-  "config": {
-    "script_path": "https://file.lemo-ai.com/example.py",
-    "jar_files": [
-      "/opt/flink/opt/flink-sql-connector-kafka-3.0.2-1.18.jar"
-    ]
-  }
+  "tenant_id": "demo",
+  "scenario_id": "vlog_feed",
+  "user_id": "user_001",
+  "item_id": "video_123",
+  "action_type": "VIEW",
+  "timestamp": 1730800000000
 }
 ```
 
-**生成的 FlinkDeployment：**
+**处理逻辑**：
+- 1小时滚动窗口聚合
+- 统计：观看次数、点赞次数、分享次数
+- 计算活跃时段（早中晚）
+
+**输出**：
+- MongoDB `user_profiles` collection（持久化）
+- Redis `user:profile:{user_id}` key（快速查询）
+
+**用途**：Recall服务使用实时特征进行个性化召回
+
+---
+
+#### 2. 物品热度实时计算（item_hot_score_calculator.py）
+
+**功能**：实时计算物品热度分数
+
+**输入**：Kafka `user_behaviors` topic
+
+**处理逻辑**：
+- 1小时滑动窗口（每15分钟更新）
+- 加权计算：`view×1 + like×2 + share×3`
+- 考虑时间衰减（越新权重越高）
+
+**输出**：
+- Redis ZSET `hot:items:{tenant_id}:{scenario_id}`
+- 只保留Top 1000物品
+- 2小时过期
+
+**用途**：HotItemsRecall使用热度分数进行热门召回
+
+---
+
+#### 3. 推荐指标实时统计（recommendation_metrics.py）
+
+**功能**：实时计算推荐效果指标
+
+**输入**：Kafka `user_behaviors` topic
+
+**处理逻辑**：
+- 1分钟滚动窗口聚合
+- 统计：曝光数、点击数、CTR、平均观看时长、完播率
+
+**输出**：
+- Prometheus Pushgateway（监控指标）
+- 供Grafana大盘展示
+
+**指标示例**：
+```
+recommendation_ctr{tenant_id="demo",scenario_id="vlog_feed"} 0.035
+recommendation_avg_watch_duration{tenant_id="demo",scenario_id="vlog_feed"} 45.2
+```
+
+**用途**：运营监控、AB实验效果评估
+
+---
+
+#### 4. 行为数据实时ETL（services/flink-realtime/main.py）
+
+**功能**：Kafka → ClickHouse实时写入
+
+**输入**：Kafka `user_behaviors` topic
+
+**处理逻辑**：
+- 数据清洗（去重、过滤无效数据）
+- 格式转换（JSON → ClickHouse格式）
+- 实时写入
+
+**输出**：
+- ClickHouse `user_behaviors` 表（OLAP）
+
+**用途**：离线模型训练（DeepFM、Wide&Deep）使用ClickHouse数据
+
+---
+
+### 部署配置
+
+**FlinkDeployment文件**：`k8s-deploy/flink-deployment-realtime-service.yaml`
+
 ```yaml
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: flink-realtime-features
+  namespace: lemo-dev
 spec:
+  image: registry.cn-beijing.aliyuncs.com/lemo/recommender-flink:latest
+  flinkVersion: v1_17
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "4"
+    state.backend: rocksdb
+    execution.checkpointing.interval: 60s
+  jobManager:
+    resource:
+      memory: "1024m"
+      cpu: 0.5
+  taskManager:
+    resource:
+      memory: "1024m"
+      cpu: 0.5
+    replicas: 2
   job:
-    jarURI: local:///opt/flink/opt/flink-python-1.19.3.jar
-    entryClass: org.apache.flink.client.python.PythonDriver
-    args:
-      - "-py"
-      - "/opt/flink/usrlib/entrypoint.py"
-      - "--script-url"
-      - "https://file.lemo-ai.com/example.py"
-  env:
-    - name: SCRIPT_URL
-      value: "https://file.lemo-ai.com/example.py"
-    - name: JAR_FILES
-      value: "/opt/flink/opt/flink-sql-connector-kafka-3.0.2-1.18.jar"
+    jarURI: local:///opt/flink/usrlib/recommender.jar
+    entryClass: "services.flink_realtime.main"
+    parallelism: 4
+    state: running
+  envFrom:
+  - configMapRef:
+      name: lemo-services-config
 ```
 
-#### 2. JAR 作业
-
-**模板配置：**
-```json
-{
-  "job_type": "JAR",
-  "config": {
-    "jar_path": "https://file.lemo-ai.com/my-job.jar",
-    "main_class": "com.example.MainClass",
-    "args": ["--config", "prod"]
-  }
-}
+**部署命令**：
+```bash
+kubectl apply -f k8s-deploy/flink-deployment-realtime-service.yaml
 ```
 
-**生成的 FlinkDeployment：**
-```yaml
-spec:
-  job:
-    jarURI: https://file.lemo-ai.com/my-job.jar
-    entryClass: com.example.MainClass
-    args: ["--config", "prod"]
+**查看状态**：
+```bash
+kubectl get flinkdeployment -n lemo-dev
+kubectl logs -f -n lemo-dev -l app=flink-realtime-features,component=jobmanager
 ```
-
-#### 3. SQL 作业
-
-**模板配置：**
-```json
-{
-  "job_type": "SQL",
-  "config": {
-    "sql": "CREATE TABLE ...; INSERT INTO ...;"
-  }
-}
-```
-
-**实现：** 生成一个包装 Python 脚本，使用 PyFlink Table API 执行 SQL
 
 ---
 
@@ -1227,6 +1244,137 @@ kubectl describe pod job-example-py-tm-xxx -n lemo-dev
 
 ---
 
+## 🔧 高级功能：动态作业提交
+
+> **说明**：此功能用于后台管理，允许管理员临时提交定制化Flink作业（数据回填、临时分析等）
+
+### 使用场景
+
+| 场景 | 说明 | 示例 |
+|------|------|------|
+| **数据回填** | 补充历史数据 | 重新计算过去30天的用户特征 |
+| **临时分析** | 特殊场景统计 | 分析某个营销活动的转化率 |
+| **实验性作业** | 测试新算法 | 测试新的热度计算公式 |
+| **一次性任务** | 数据迁移 | 从旧系统迁移用户画像数据 |
+
+### 后台管理流程
+
+#### 1. 创建作业模板（后台界面）
+
+```json
+{
+  "template_id": "data_backfill_20241105",
+  "name": "用户特征数据回填",
+  "description": "补充10月份的用户特征数据",
+  "job_type": "PYTHON_SCRIPT",
+  "config": {
+    "script_path": "https://file.lemo-ai.com/backfill_user_features.py",
+    "parallelism": 4,
+    "jar_files": [
+      "/opt/flink/opt/flink-sql-connector-kafka-3.0.2-1.18.jar"
+    ],
+    "args": {
+      "start_date": "2024-10-01",
+      "end_date": "2024-10-31"
+    }
+  }
+}
+```
+
+#### 2. 提交作业请求（API调用）
+
+```bash
+POST /api/v1/flink/jobs/submit
+Content-Type: application/json
+
+{
+  "template_id": "data_backfill_20241105",
+  "job_config": {
+    "parallelism": 8,
+    "resource_profile": "large"
+  }
+}
+```
+
+#### 3. 后端处理流程
+
+```python
+# app/services/flink/job_manager.py
+async def submit_job(self, template, request):
+    # 1. 生成FlinkDeployment YAML
+    crd_yaml = self.crd_generator.generate_yaml(template, request)
+    
+    # 2. 创建K8s CRD
+    self.k8s_client.create_namespaced_custom_object(
+        group="flink.apache.org",
+        version="v1beta1",
+        namespace="lemo-dev",
+        plural="flinkdeployments",
+        body=crd_yaml
+    )
+    
+    # 3. 返回作业ID
+    return {
+        "job_id": "job-backfill-20241105-abc123",
+        "status": "RUNNING"
+    }
+```
+
+#### 4. 查询作业状态
+
+```bash
+GET /api/v1/flink/jobs/job-backfill-20241105-abc123
+
+# 响应
+{
+  "job_id": "job-backfill-20241105-abc123",
+  "status": "RUNNING",
+  "flink_job_id": "a1b2c3d4e5f6",
+  "start_time": "2024-11-05T10:00:00Z",
+  "progress": 45.2,
+  "metrics": {
+    "records_processed": 12000000,
+    "records_per_second": 50000
+  }
+}
+```
+
+#### 5. 停止作业
+
+```bash
+DELETE /api/v1/flink/jobs/job-backfill-20241105-abc123
+```
+
+### 支持的作业类型
+
+| 类型 | 说明 | 配置示例 |
+|------|------|---------|
+| **PYTHON_SCRIPT** | Python脚本作业 | `{"script_path": "https://..."}` |
+| **JAR** | Java JAR作业 | `{"jar_path": "https://...", "main_class": "..."}` |
+| **SQL** | Flink SQL作业 | `{"sql": "CREATE TABLE ..."}` |
+
+### 与固定服务的对比
+
+| 对比项 | 固定实时服务（v2.0主流） | 动态作业提交（高级功能） |
+|--------|------------------------|------------------------|
+| **用途** | 7×24实时特征计算 | 临时/一次性任务 |
+| **部署** | kubectl apply静态部署 | API动态创建 |
+| **数量** | 1个FlinkDeployment | N个FlinkDeployment |
+| **管理** | Flink Operator自动 | 后台手动管理 |
+| **资源** | 固定资源 | 按需分配 |
+| **适用场景** | 生产环境核心服务 | 数据回填、临时分析 |
+
+### 实现代码位置
+
+| 组件 | 文件路径 | 说明 |
+|------|---------|------|
+| **API接口** | `app/api/v1/flink_jobs.py` | HTTP API定义 |
+| **作业管理器** | `app/services/flink/job_manager.py` | 作业提交/查询/停止 |
+| **Operator管理器** | `app/services/flink/operator_job_manager.py` | K8s Operator集成 |
+| **CRD生成器** | `app/services/flink/crd_generator.py` | FlinkDeployment YAML生成 |
+
+---
+
 ##  📚 参考资料
 
 - **Flink Kubernetes Operator 官方文档**: https://nightlies.apache.org/flink/flink-kubernetes-operator-docs-main/
@@ -1247,19 +1395,17 @@ export KUBECONFIG=/root/k3s-jd-config.yaml
 # 查看 Operator
 kubectl get pods -n flink-operator-system
 
-# 查看推荐服务
-kubectl get pods -n lemo-dev | grep lemo-service-recommender
+# 查看固定实时服务
+kubectl get flinkdeployment flink-realtime-features -n lemo-dev
+kubectl logs -f -n lemo-dev -l app=flink-realtime-features,component=jobmanager
 
-# 查看所有 Flink 作业
-kubectl get flinkdeployment -n lemo-dev
+# 查看所有动态作业
+kubectl get flinkdeployment -n lemo-dev | grep -v flink-realtime-features
 
 # 查看作业详情
 kubectl describe flinkdeployment <job-name> -n lemo-dev
 
-# 查看作业日志
-kubectl logs -f -l app=<job-name>,component=jobmanager -n lemo-dev
-
-# 删除作业
+# 删除动态作业
 kubectl delete flinkdeployment <job-name> -n lemo-dev
 
 # 重启推荐服务
@@ -1270,18 +1416,17 @@ kubectl rollout restart deployment/lemo-service-recommender-http -n lemo-dev
 
 | 文件 | 路径 | 说明 |
 |------|------|------|
+| **固定实时服务** | `k8s-deploy/flink-deployment-realtime-service.yaml` | v2.0核心部署文件 |
 | Operator 安装脚本 | `scripts/install_flink_operator.sh` | 安装 Flink Operator |
-| 服务部署脚本 | `k8s-deploy/deploy-*.sh` | 部署推荐服务 |
-| K8s 配置 | `k8s-deploy/k8s-deployment-*.yaml` | K8s 部署清单 |
-| kubeconfig | `k8s-deploy/k3s-jd-config.yaml` | K8s 集群配置 |
-| Job Manager | `app/services/flink/job_manager.py` | 作业管理核心逻辑 |
+| Flink作业代码 | `flink_jobs/*.py` | 4个核心Flink作业 |
+| Job Manager | `app/services/flink/job_manager.py` | 动态作业管理 |
 | Operator Manager | `app/services/flink/operator_job_manager.py` | Operator 集成 |
 | CRD Generator | `app/services/flink/crd_generator.py` | CRD YAML 生成 |
 
 ---
 
-**文档版本**: v1.0  
-**更新时间**: 2025-11-03  
+**文档版本**: v2.0  
+**更新时间**: 2024-11-05  
 **维护者**: Lemo 推荐系统团队
 
 
