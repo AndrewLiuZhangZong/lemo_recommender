@@ -201,93 +201,160 @@ async with httpx.AsyncClient() as client:
 ```
 lemo_recommender/
 ├── app/                      # 应用主目录
-│   ├── models/              # 数据模型（Pydantic）
+│   ├── models/              # 数据模型层（Pydantic/MongoDB ODM）
+│   │   ├── scenario.py      # 场景模型（配置、策略）
+│   │   ├── item.py          # 物品模型（内容、特征）
+│   │   ├── interaction.py   # 行为模型（点击、观看、分享）
+│   │   ├── user_profile.py  # 用户画像模型
+│   │   ├── flink_job_template.py # Flink作业模板
+│   │   └── experiment.py    # AB实验模型
 │   ├── services/            # 业务逻辑层
-│   │   ├── scenario/        # 场景管理
-│   │   ├── item/            # 物品管理
-│   │   ├── interaction/     # 行为采集
-│   │   ├── recommendation/  # 推荐服务
-│   │   ├── experiment/      # AB实验服务
-│   │   ├── job_manager.py   # 作业管理服务（Flink/Celery统一管理）
-│   │   └── cache_manager.py # 缓存管理
-│   ├── engine/              # 推荐引擎
-│   │   ├── recall/          # 召回策略（热门、协同过滤、向量）
-│   │   ├── ranker/          # 排序模型
-│   │   └── reranker/        # 重排规则（多样性、新鲜度）
-│   ├── ml/                  # 机器学习模块
-│   │   ├── models/          # 深度学习模型（Wide&Deep、DeepFM、双塔）
+│   │   ├── scenario/        # 场景管理服务
+│   │   ├── item/            # 物品管理服务（CRUD、向量化）
+│   │   ├── interaction/     # 行为采集服务（埋点、统计）
+│   │   ├── recommendation/  # 推荐编排服务
+│   │   ├── experiment/      # AB实验服务（分桶、统计）
+│   │   ├── flink/           # Flink作业管理
+│   │   │   ├── job_manager.py    # 作业提交、停止、状态查询
+│   │   │   ├── crd_generator.py  # CRD生成器（企业级标准）
+│   │   │   └── template_service.py # 作业模板管理
+│   │   └── cache_manager.py # 缓存管理（Redis）
+│   ├── engine/              # 推荐引擎核心
+│   │   ├── recall/          # 召回策略
+│   │   │   ├── hot.py       # 热门召回（时间衰减）
+│   │   │   ├── cf.py        # 协同过滤（user/item-based）
+│   │   │   └── vector.py    # 向量召回（Milvus）
+│   │   ├── ranker/          # 排序层
+│   │   │   ├── simple_ranker.py  # 规则排序
+│   │   │   └── model_ranker.py   # 模型排序（预留）
+│   │   └── reranker/        # 重排层
+│   │       ├── diversity.py  # 多样性重排
+│   │       ├── freshness.py  # 新鲜度重排
+│   │       └── business.py   # 业务规则重排
+│   ├── ml/                  # 机器学习模块（预留）
+│   │   ├── models/          # 深度学习模型
 │   │   ├── trainer.py       # 模型训练
-│   │   ├── model_registry.py # 模型版本管理
-│   │   └── model_server.py  # 模型服务
+│   │   └── model_registry.py # 模型版本管理
 │   ├── tasks/               # Celery离线任务
-│   │   ├── celery_app.py    # Celery配置
+│   │   ├── celery_app.py    # Celery配置（Beat调度）
 │   │   ├── item_tasks.py    # 物品任务（相似度计算）
-│   │   ├── user_tasks.py    # 用户任务（画像更新）
-│   │   ├── model_tasks.py   # 模型任务（训练）
-│   │   └── recommendation_tasks.py # 推荐任务（预计算）
-│   ├── api/v1/              # API路由
-│   │   ├── scenario.py      # 场景API
-│   │   ├── item.py          # 物品API
-│   │   ├── interaction.py   # 行为API
-│   │   ├── recommendation.py # 推荐API
-│   │   ├── experiment.py    # AB实验API
-│   │   ├── admin.py         # 管理后台API
-│   │   ├── jobs.py          # 作业管理API（Flink/Celery）
-│   │   ├── model_training.py # 模型训练API
-│   │   ├── recall_config.py  # 召回策略配置API
-│   │   ├── model_management.py # 模型管理API
-│   │   └── feature_config.py  # 实时特征配置API
-│   ├── grpc_clients/        # gRPC客户端
-│   ├── core/                # 核心组件
-│   │   ├── config.py        # 配置管理
-│   │   ├── database.py      # MongoDB
-│   │   ├── redis_client.py  # Redis
-│   │   ├── kafka.py         # Kafka
-│   │   ├── milvus_client.py # Milvus
-│   │   └── metrics.py       # Prometheus指标
+│   │   └── user_tasks.py    # 用户任务（画像更新）
+│   ├── api/                 # HTTP API路由
+│   │   └── v1/              # API版本1
+│   │       ├── scenario.py      # 场景CRUD API
+│   │       ├── item.py          # 物品CRUD API
+│   │       ├── interaction.py   # 行为上报API
+│   │       ├── recommendation.py # 推荐请求API
+│   │       ├── experiment.py    # AB实验API
+│   │       ├── flink_jobs.py    # Flink作业管理API
+│   │       └── admin.py         # 管理后台API
+│   ├── grpc_server/         # gRPC服务（高性能RPC）
+│   │   ├── recommendation_server.py # 推荐服务
+│   │   └── feature_server.py        # 特征服务
+│   ├── core/                # 核心基础组件
+│   │   ├── config.py        # 多环境配置管理
+│   │   ├── database.py      # MongoDB连接池
+│   │   ├── redis_client.py  # Redis客户端（缓存、限流）
+│   │   ├── kafka.py         # Kafka生产者/消费者
+│   │   ├── milvus_client.py # Milvus向量数据库
+│   │   └── metrics.py       # Prometheus指标导出
 │   └── utils/               # 工具类
-│       ├── rate_limiter.py  # 限流器、熔断器
-│       └── performance.py   # 性能优化工具
-├── admin-frontend/          # 管理后台前端（Vue3 + Element Plus）
+│       ├── rate_limiter.py  # 限流器（令牌桶、滑动窗口）
+│       ├── circuit_breaker.py # 熔断器
+│       └── performance.py   # 性能监控工具
+├── admin-frontend/          # 管理后台前端（Vue3 + Element Plus + TypeScript）
 │   ├── src/
-│   │   ├── views/          # 页面
-│   │   │   ├── Dashboard.vue       # 仪表板
+│   │   ├── views/          # 页面组件
+│   │   │   ├── Dashboard.vue       # 仪表板（实时指标）
 │   │   │   ├── Scenarios.vue       # 场景管理
-│   │   │   ├── Items.vue           # 物品管理
+│   │   │   ├── Items.vue           # 物品管理（批量导入）
+│   │   │   ├── FlinkJobs.vue       # Flink作业管理
 │   │   │   ├── Experiments.vue     # AB实验
-│   │   │   ├── Analytics.vue       # 数据分析
-│   │   │   ├── Jobs.vue            # 作业管理（Flink/Celery）
-│   │   │   ├── ModelTraining.vue   # 模型训练
-│   │   │   ├── RecallConfig.vue    # 召回策略配置
-│   │   │   ├── ModelManagement.vue # 模型管理
-│   │   │   └── FeatureConfig.vue   # 实时特征配置
-│   │   ├── api/            # API封装
-│   │   └── router/         # 路由配置
+│   │   │   └── Analytics.vue       # 数据分析
+│   │   ├── api/            # API封装（axios）
+│   │   ├── router/         # 路由配置
+│   │   ├── stores/         # 状态管理（Pinia）
+│   │   └── components/     # 公共组件
 │   └── package.json
-├── flink_jobs/              # Flink实时计算作业
+├── flink_jobs/              # Flink实时计算作业（Python/SQL）
+│   ├── minimal_test.py      # 测试作业（验证环境）
 │   ├── user_profile_updater.py       # 用户画像实时更新
 │   ├── item_hot_score_calculator.py  # 物品热度计算
 │   └── recommendation_metrics.py     # 实时指标统计
-├── config/                  # 多环境配置
-│   ├── local.env           # 本地开发
+├── config/                  # 多环境配置文件
+│   ├── local.env           # 本地开发环境
 │   ├── test.env            # 测试环境
 │   └── prod.env            # 生产环境
-├── docs/                    # 文档
+├── docs/                    # 项目文档
+│   ├── Flink架构与部署完整指南.md  # Flink部署（企业级标准）⭐
 │   ├── 系统设计.md          # 完整技术架构
 │   └── 开发计划.md          # 22周开发路线图
-├── k8s/                     # Kubernetes部署配置
-├── scripts/                 # 脚本工具
-│   ├── init_db.py          # 数据库初始化
-│   ├── init_milvus.py      # Milvus初始化
-│   ├── run_item_consumer.py # 物品Kafka消费者
-│   └── run_flink_jobs.py   # Flink作业启动器（已被作业管理取代）
-├── tests/                   # 测试
-├── docker-compose.yml       # Docker Compose配置
-├── Dockerfile              # Docker镜像
-├── Makefile                # 快捷命令
+├── k8s-deploy/              # Kubernetes部署配置
+│   ├── k8s-deployment-http-grpc.yaml # HTTP+gRPC服务部署
+│   ├── flink-operator.yaml  # Flink Kubernetes Operator
+│   └── regcred-secret.yaml  # 阿里云ACR镜像拉取凭证
+├── scripts/                 # 运维脚本工具
+│   ├── build_flink_images.sh        # Flink镜像构建（企业级标准）⭐
+│   ├── build_and_push_flink_to_acr.sh   # flink-python镜像构建
+│   ├── build_and_push_flink_app.sh      # flink-app镜像构建
+│   ├── install_flink_operator.sh        # Flink Operator安装
+│   ├── init_db.py           # MongoDB数据库初始化
+│   ├── init_remote_mongo.py # 远程MongoDB初始化
+│   ├── init_milvus.py       # Milvus向量库初始化
+│   └── flink_app_entrypoint.py # Flink作业入口点（脚本下载器）
+├── tests/                   # 单元测试和集成测试
+│   ├── test_scenario.py     # 场景服务测试
+│   ├── test_recommendation.py # 推荐服务测试
+│   └── test_flink_jobs.py   # Flink作业测试
+├── Dockerfile.flink-python  # Flink Python基础镜像（Flink 2.0 + PyFlink 2.1.1）
+├── Dockerfile.flink-app     # Flink应用镜像（基于flink-python）
+├── Dockerfile              # 推荐服务镜像
+├── docker-compose.yml       # Docker Compose本地开发环境
+├── Makefile                # 快捷命令（init-db、test、docker-build）
+├── pyproject.toml          # Poetry依赖管理
+├── ARCHITECTURE_CHECK.md    # 架构完整性检查清单⭐
 ├── QUICKSTART.md           # 快速开始指南（含curl示例）
-└── README.md               # 项目说明
+└── README.md               # 项目说明（本文件）
 ```
+
+### 核心文件功能说明
+
+#### 🔧 Flink相关（企业级标准）
+
+| 文件 | 功能 | 技术亮点 |
+|------|------|---------|
+| `Dockerfile.flink-python` | Flink Python基础镜像 | • Flink 2.0 + PyFlink 2.1.1<br>• Kafka Connector 3.3.0<br>• 符合阿里云/字节跳动分层镜像标准 |
+| `Dockerfile.flink-app` | Flink应用镜像 | • 继承flink-python<br>• 脚本下载器（entrypoint.py）<br>• 从MongoDB动态拉取用户脚本 |
+| `scripts/build_flink_images.sh` | 镜像构建脚本 | • 7步自动化构建流程<br>• PyFlink完整性验证<br>• AMD64跨平台构建 |
+| `app/services/flink/crd_generator.py` | CRD生成器 | • 生成FlinkDeployment配置<br>• 资源档位预设（micro/small/medium/large/xlarge）<br>• HPA自动伸缩支持 |
+| `k8s-deploy/k8s-deployment-http-grpc.yaml` | K8s部署配置 | • HTTP+gRPC双协议服务<br>• RBAC权限配置<br>• ConfigMap环境变量管理 |
+| `docs/Flink架构与部署完整指南.md` | Flink部署文档 | • 完整的部署流程<br>• 故障排查指南<br>• 企业级标准对照 |
+
+#### 🎯 推荐引擎核心
+
+| 文件 | 功能 | 算法 |
+|------|------|-----|
+| `app/engine/recall/hot.py` | 热门召回 | 时间衰减算法 |
+| `app/engine/recall/cf.py` | 协同过滤召回 | User/Item-based CF |
+| `app/engine/recall/vector.py` | 向量召回 | Milvus ANN搜索 |
+| `app/engine/reranker/diversity.py` | 多样性重排 | MMR算法（最大边际相关） |
+| `app/engine/reranker/freshness.py` | 新鲜度重排 | 时间衰减 + Sigmoid |
+
+#### 🌐 API服务层
+
+| 文件 | 功能 | 特性 |
+|------|------|-----|
+| `app/api/v1/recommendation.py` | 推荐请求API | • 多召回策略融合<br>• Debug模式<br>• 性能指标埋点 |
+| `app/api/v1/flink_jobs.py` | Flink作业管理 | • 作业提交/停止/删除<br>• 状态查询<br>• 日志查看 |
+| `app/api/v1/scenario.py` | 场景管理 | • 场景CRUD<br>• 配置验证<br>• 策略组合 |
+
+#### 🎨 前端管理后台
+
+| 文件 | 功能 | 技术栈 |
+|------|------|--------|
+| `admin-frontend/src/views/FlinkJobs.vue` | Flink作业管理界面 | Vue3 + Element Plus |
+| `admin-frontend/src/views/Dashboard.vue` | 实时监控仪表板 | ECharts + 实时刷新 |
+| `admin-frontend/src/views/Items.vue` | 物品批量导入 | CSV/Excel上传 |
 
 ### 微服务拆分（K8s生产环境）
 
