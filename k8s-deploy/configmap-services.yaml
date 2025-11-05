@@ -70,6 +70,18 @@ stringData:
   JWT_SECRET: "your-jwt-secret-key-change-in-production"
 
 ---
+# ConfigMap - BFF服务配置
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bff-service-config
+  namespace: lemo-dev
+data:
+  HTTP_PORT: "10073"
+  GRPC_PORT: "10074"
+  SERVICE_NAME: "bff-service"
+
+---
 # ConfigMap - 召回服务配置
 apiVersion: v1
 kind: ConfigMap
@@ -77,7 +89,7 @@ metadata:
   name: recall-service-config
   namespace: lemo-dev
 data:
-  GRPC_PORT: "8081"
+  GRPC_PORT: "10075"
   SERVICE_NAME: "recall-service"
   # 召回特定配置
   DEFAULT_RECALL_LIMIT: "500"
@@ -91,7 +103,7 @@ metadata:
   name: ranking-service-config
   namespace: lemo-dev
 data:
-  GRPC_PORT: "8082"
+  GRPC_PORT: "10076"
   SERVICE_NAME: "ranking-service"
   # 精排特定配置
   DEFAULT_RANKER: "deepfm"
@@ -106,7 +118,7 @@ metadata:
   name: reranking-service-config
   namespace: lemo-dev
 data:
-  GRPC_PORT: "8083"
+  GRPC_PORT: "10077"
   SERVICE_NAME: "reranking-service"
   # 重排特定配置
   DIVERSITY_WINDOW: "10"
@@ -120,7 +132,7 @@ metadata:
   name: user-service-config
   namespace: lemo-dev
 data:
-  GRPC_PORT: "8084"
+  GRPC_PORT: "10078"
   SERVICE_NAME: "user-service"
   # 用户服务特定配置
   CACHE_TTL: "3600"  # 用户画像缓存1小时
@@ -134,7 +146,7 @@ metadata:
   name: item-service-config
   namespace: lemo-dev
 data:
-  GRPC_PORT: "8085"
+  GRPC_PORT: "10079"
   SERVICE_NAME: "item-service"
   # 物品服务特定配置
   ENABLE_VECTOR_STORAGE: "true"
@@ -148,10 +160,51 @@ metadata:
   name: behavior-service-config
   namespace: lemo-dev
 data:
-  GRPC_PORT: "8086"
+  GRPC_PORT: "10080"
   SERVICE_NAME: "behavior-service"
   # 行为服务特定配置
   KAFKA_BATCH_SIZE: "100"
   KAFKA_LINGER_MS: "10"
   KAFKA_COMPRESSION_TYPE: "gzip"
+
+---
+# ConfigMap - 模型训练服务配置
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: model-training-service-config
+  namespace: lemo-dev
+data:
+  GRPC_PORT: "10081"
+  SERVICE_NAME: "model-training-service"
+  # 模型训练特定配置
+  GPU_ENABLED: "false"
+  MAX_TRAINING_JOBS: "3"
+
+---
+# ConfigMap - 特征工程服务配置
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-engineering-service-config
+  namespace: lemo-dev
+data:
+  GRPC_PORT: "10082"
+  SERVICE_NAME: "feature-engineering-service"
+  # 特征工程特定配置
+  BATCH_SIZE: "10000"
+
+---
+# ConfigMap - 向量生成服务配置
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vector-generation-service-config
+  namespace: lemo-dev
+data:
+  GRPC_PORT: "10083"
+  SERVICE_NAME: "vector-generation-service"
+  # 向量生成特定配置
+  EMBEDDING_DIM: "128"
+  BATCH_SIZE: "256"
 
