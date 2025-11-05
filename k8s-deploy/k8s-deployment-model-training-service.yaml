@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: lemo-service-recommender-model-training
+  namespace: lemo-dev
+  labels:
+    app: model-training-service
+    version: v1
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8091
+    targetPort: 8091
+    protocol: TCP
+    name: grpc
+  selector:
+    app: model-training-service
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-training-service
+  namespace: lemo-dev
+  labels:
+    app: model-training-service
+    version: v1
+spec:
+  replicas: 1  # 模型训练服务，1副本即可
+  selector:
+    matchLabels:
+      app: model-training-service
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: model-training-service
+        version: v1
+    spec:
+      containers:
+      - name: model-training-service
+        image: registry.cn-beijing.aliyuncs.com/lemo/recommender:latest
+        imagePullPolicy: Always
+        command: ["python", "services/model-training/main.py"]
+        ports:
+        - containerPort: 8091
+          name: grpc
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: lemo-services-config
+        - secretRef:
+            name: lemo-services-secret
+        env:
+        - name: GRPC_PORT
+          value: "8091"
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        volumeMounts:
+        - name: model-storage
+          mountPath: /models
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: model-pvc
+      imagePullSecrets:
+      - name: aliyun-docker-registry
+

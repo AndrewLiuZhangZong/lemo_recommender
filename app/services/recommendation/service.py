@@ -4,6 +4,7 @@
 from typing import List, Dict, Any, Optional
 import time
 import uuid
+import asyncio
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.models.recommendation import (
@@ -16,8 +17,11 @@ from app.services.scenario.service import ScenarioService
 from app.services.item.service import ItemService
 from app.engine.recall.hot_items import HotItemsRecall
 from app.engine.recall.collaborative_filtering import CollaborativeFilteringRecall, ItemBasedCFRecall
+from app.engine.recall.als_cf import ALSCollaborativeFiltering
 from app.engine.ranker.simple_ranker import SimpleScoreRanker, RandomRanker
+from app.engine.ranker.deep_ranker import DeepRanker
 from app.engine.reranker.diversity import DiversityReranker, FreshnessReranker
+from app.services.cache.multi_level_cache import MultiLevelCache
 
 
 class RecommendationService:
@@ -26,6 +30,9 @@ class RecommendationService:
     def __init__(self, db: AsyncIOMotorDatabase, redis_client=None):
         self.db = db
         self.redis = redis_client
+        
+        # 🚀 多级缓存
+        self.cache = MultiLevelCache(redis_client) if redis_client else None
         
         # 服务依赖
         self.scenario_service = ScenarioService(db)
@@ -36,12 +43,14 @@ class RecommendationService:
             "hot_items": HotItemsRecall(redis_client),
             "user_cf": CollaborativeFilteringRecall(db),
             "item_cf": ItemBasedCFRecall(db),
+            "als_cf": ALSCollaborativeFiltering(db, redis_client),  # 🚀 ALS协同过滤
         }
         
         # 排序器注册表
         self.rankers = {
             "simple_score": SimpleScoreRanker(db),
             "random": RandomRanker(),
+            "deepfm": DeepRanker(db),  # 🚀 DeepFM深度排序
         }
         
         # 重排器注册表
@@ -62,6 +71,47 @@ class RecommendationService:
         start_time = time.time()
         
         try:
+            # 🚀 L1缓存：尝试从缓存获取推荐结果
+            if self.cache:
+                context = {
+                    "count": request.count,
+                    "filters": request.filters or {}
+                }
+                cached_result = await self.cache.get_recommendation_cache(
+                    scenario_id=request.scenario_id,
+                    user_id=user_id,
+                    context=context
+                )
+                
+                if cached_result:
+                    total_time = (time.time() - start_time) * 1000
+                    print(f"[L1 Cache HIT] 推荐结果命中缓存，耗时: {total_time:.2f}ms")
+                    
+                    # 构建响应
+                    items = [
+                        RecommendedItem(**item) for item in cached_result
+                    ]
+                    
+                    debug_info = None
+                    if request.debug:
+                        debug_info = DebugInfo(
+                            recall_count=len(items),
+                            recall_time_ms=0,
+                            rank_time_ms=0,
+                            rerank_time_ms=0,
+                            total_time_ms=total_time,
+                            from_cache=True
+                        )
+                    
+                    return RecommendResponse(
+                        request_id=request_id,
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        scenario_id=request.scenario_id,
+                        items=items,
+                        debug_info=debug_info
+                    )
+            
             # 1. 加载场景配置
             scenario = await self.scenario_service.get_scenario(
                 tenant_id=tenant_id,
@@ -123,7 +173,32 @@ class RecommendationService:
                 scored_items=top_items
             )
             
-            # 7. 构建响应
+            # 7. 🚀 写入L1缓存（异步，不阻塞返回）
+            if self.cache:
+                context = {
+                    "count": request.count,
+                    "filters": request.filters or {}
+                }
+                # 将结果序列化为字典
+                cached_items = [
+                    {
+                        "item_id": item.item_id,
+                        "score": item.score,
+                        "metadata": item.metadata
+                    }
+                    for item in result_items
+                ]
+                # 异步写入缓存
+                asyncio.create_task(
+                    self.cache.set_recommendation_cache(
+                        scenario_id=request.scenario_id,
+                        user_id=user_id,
+                        context=context,
+                        recommendations=cached_items
+                    )
+                )
+            
+            # 8. 构建响应
             total_time = (time.time() - start_time) * 1000
             
             debug_info = None
@@ -133,7 +208,8 @@ class RecommendationService:
                     recall_time_ms=recall_time,
                     rank_time_ms=rank_time,
                     rerank_time_ms=rerank_time,
-                    total_time_ms=total_time
+                    total_time_ms=total_time,
+                    from_cache=False
                 )
             
             return RecommendResponse(
@@ -157,7 +233,7 @@ class RecommendationService:
         config: Any,
         filters: Dict[str, Any]
     ) -> List[str]:
-        """多路召回"""
+        """多路召回（并行执行）"""
         
         recall_config = config.recall
         strategies = recall_config.get("strategies", [])
@@ -169,8 +245,8 @@ class RecommendationService:
                 {"name": "item_cf", "weight": 0.5, "limit": 100}
             ]
         
-        all_candidates = []
-        
+        # 🚀 并行执行所有召回策略
+        tasks = []
         for strategy_config in strategies:
             strategy_name = strategy_config.get("name")
             limit = strategy_config.get("limit", 100)
@@ -182,20 +258,31 @@ class RecommendationService:
                 print(f"未知的召回策略: {strategy_name}")
                 continue
             
-            # 执行召回
-            try:
-                item_ids = await strategy.recall(
-                    tenant_id=tenant_id,
-                    scenario_id=scenario_id,
-                    user_id=user_id,
-                    limit=limit,
-                    params=params
-                )
-                all_candidates.extend(item_ids)
-            except Exception as e:
-                print(f"召回策略 {strategy_name} 失败: {e}")
+            # 创建异步任务
+            task = self._execute_single_recall(
+                strategy=strategy,
+                strategy_name=strategy_name,
+                tenant_id=tenant_id,
+                scenario_id=scenario_id,
+                user_id=user_id,
+                limit=limit,
+                params=params
+            )
+            tasks.append(task)
         
-        # 去重
+        # 等待所有召回任务完成
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # 合并结果
+        all_candidates = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                print(f"召回任务 {i} 失败: {result}")
+                continue
+            if result:
+                all_candidates.extend(result)
+        
+        # 去重（保持顺序）
         unique_candidates = list(dict.fromkeys(all_candidates))
         
         # 应用过滤条件
@@ -207,6 +294,30 @@ class RecommendationService:
             ]
         
         return unique_candidates
+    
+    async def _execute_single_recall(
+        self,
+        strategy,
+        strategy_name: str,
+        tenant_id: str,
+        scenario_id: str,
+        user_id: str,
+        limit: int,
+        params: Dict[str, Any]
+    ) -> List[str]:
+        """执行单个召回策略（用于并行调用）"""
+        try:
+            item_ids = await strategy.recall(
+                tenant_id=tenant_id,
+                scenario_id=scenario_id,
+                user_id=user_id,
+                limit=limit,
+                params=params
+            )
+            return item_ids
+        except Exception as e:
+            print(f"召回策略 {strategy_name} 失败: {e}")
+            return []
     
     async def _rank(
         self,

@@ -1,0 +1,150 @@
+# VirtualService - 定义路由规则（超时、重试、金丝雀发布）
+# 对标字节跳动超大规模标准
+
+---
+# 召回服务 - VirtualService
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: recall-service
+  namespace: lemo-dev
+spec:
+  hosts:
+  - lemo-service-recommender-recall
+  http:
+  - match:
+    - headers:
+        x-canary:  # 金丝雀发布：带x-canary: true的请求到v2
+          exact: "true"
+    route:
+    - destination:
+        host: lemo-service-recommender-recall
+        subset: v2
+      weight: 100
+    timeout: 2s  # 召回超时2秒
+    retries:
+      attempts: 2
+      perTryTimeout: 1s
+      retryOn: 5xx,reset,connect-failure,refused-stream
+  
+  - route:  # 默认路由
+    - destination:
+        host: lemo-service-recommender-recall
+        subset: v1
+      weight: 100
+    timeout: 2s
+    retries:
+      attempts: 2
+      perTryTimeout: 1s
+      retryOn: 5xx,reset,connect-failure,refused-stream
+
+---
+# 精排服务 - VirtualService
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ranking-service
+  namespace: lemo-dev
+spec:
+  hosts:
+  - lemo-service-recommender-ranking
+  http:
+  - route:
+    - destination:
+        host: lemo-service-recommender-ranking
+        subset: v1
+      weight: 100
+    timeout: 1s  # 精排超时1秒（模型推理快）
+    retries:
+      attempts: 1  # 模型推理重试1次即可
+      perTryTimeout: 800ms
+      retryOn: 5xx,reset,connect-failure
+
+---
+# 重排服务 - VirtualService
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: reranking-service
+  namespace: lemo-dev
+spec:
+  hosts:
+  - lemo-service-recommender-reranking
+  http:
+  - route:
+    - destination:
+        host: lemo-service-recommender-reranking
+        subset: v1
+      weight: 100
+    timeout: 500ms  # 重排超时500ms
+    retries:
+      attempts: 2
+      perTryTimeout: 300ms
+      retryOn: 5xx,reset,connect-failure
+
+---
+# 用户服务 - VirtualService
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: user-service
+  namespace: lemo-dev
+spec:
+  hosts:
+  - lemo-service-recommender-user
+  http:
+  - route:
+    - destination:
+        host: lemo-service-recommender-user
+        subset: v1
+      weight: 100
+    timeout: 500ms  # 用户画像查询快
+    retries:
+      attempts: 3  # 重要数据，多重试几次
+      perTryTimeout: 200ms
+      retryOn: 5xx,reset,connect-failure
+
+---
+# 物品服务 - VirtualService
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: item-service
+  namespace: lemo-dev
+spec:
+  hosts:
+  - lemo-service-recommender-item
+  http:
+  - route:
+    - destination:
+        host: lemo-service-recommender-item
+        subset: v1
+      weight: 100
+    timeout: 500ms
+    retries:
+      attempts: 3
+      perTryTimeout: 200ms
+      retryOn: 5xx,reset,connect-failure
+
+---
+# 行为服务 - VirtualService
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: behavior-service
+  namespace: lemo-dev
+spec:
+  hosts:
+  - lemo-service-recommender-behavior
+  http:
+  - route:
+    - destination:
+        host: lemo-service-recommender-behavior
+        subset: v1
+      weight: 100
+    timeout: 3s  # 行为上报允许更长时间
+    retries:
+      attempts: 2
+      perTryTimeout: 2s
+      retryOn: 5xx,reset,connect-failure
+

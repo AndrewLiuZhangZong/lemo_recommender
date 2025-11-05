@@ -1,0 +1,221 @@
+# DestinationRule - 定义流量策略（熔断、负载均衡、连接池）
+# 对标字节跳动超大规模标准
+
+---
+# 召回服务 - DestinationRule
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: recall-service
+  namespace: lemo-dev
+spec:
+  host: lemo-service-recommender-recall
+  trafficPolicy:
+    # 连接池配置
+    connectionPool:
+      tcp:
+        maxConnections: 1000              # 最大TCP连接数
+        connectTimeout: 3s                 # 连接超时
+        tcpKeepalive:
+          time: 7200s                      # TCP Keep-alive时间
+          interval: 75s
+      http:
+        http1MaxPendingRequests: 100      # HTTP/1.1最大挂起请求
+        http2MaxRequests: 1000             # HTTP/2最大请求数
+        maxRequestsPerConnection: 10       # 每个连接最大请求数
+        maxRetries: 3                      # 最大重试次数
+    
+    # 熔断配置（异常检测）
+    outlierDetection:
+      consecutiveErrors: 5                 # 连续错误5次触发熔断
+      interval: 10s                        # 检查间隔
+      baseEjectionTime: 30s                # 熔断时长（首次）
+      maxEjectionPercent: 50               # 最多熔断50%的实例
+      minHealthPercent: 25                 # 至少保持25%健康实例
+    
+    # 负载均衡策略
+    loadBalancer:
+      simple: LEAST_REQUEST                # 最少请求数算法（适合CPU密集型）
+      # 其他选项：
+      # - ROUND_ROBIN: 轮询
+      # - RANDOM: 随机
+      # - PASSTHROUGH: 不做负载均衡
+      
+      # 高级选项（可选）
+      consistentHash:                       # 一致性哈希（保持会话）
+        httpHeaderName: "x-user-id"         # 基于user_id哈希
+  
+  # 子集定义（用于金丝雀发布）
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
+
+---
+# 精排服务 - DestinationRule
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: ranking-service
+  namespace: lemo-dev
+spec:
+  host: lemo-service-recommender-ranking
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 800
+        connectTimeout: 3s
+      http:
+        http1MaxPendingRequests: 80
+        http2MaxRequests: 800
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+    
+    outlierDetection:
+      consecutiveErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 25
+    
+    loadBalancer:
+      simple: LEAST_REQUEST  # DeepFM模型推理，使用最少请求
+  
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+
+---
+# 重排服务 - DestinationRule
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: reranking-service
+  namespace: lemo-dev
+spec:
+  host: lemo-service-recommender-reranking
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 500
+        connectTimeout: 2s
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 500
+        maxRequestsPerConnection: 10
+    
+    outlierDetection:
+      consecutiveErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+    
+    loadBalancer:
+      simple: ROUND_ROBIN  # 轻量级服务，轮询即可
+  
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+
+---
+# 用户服务 - DestinationRule
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: user-service
+  namespace: lemo-dev
+spec:
+  host: lemo-service-recommender-user
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 1000
+        connectTimeout: 2s
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+    
+    outlierDetection:
+      consecutiveErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+    
+    loadBalancer:
+      consistentHash:  # 用户画像查询，使用一致性哈希
+        httpHeaderName: "x-user-id"
+  
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+
+---
+# 物品服务 - DestinationRule
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: item-service
+  namespace: lemo-dev
+spec:
+  host: lemo-service-recommender-item
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 1000
+        connectTimeout: 2s
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+    
+    outlierDetection:
+      consecutiveErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+    
+    loadBalancer:
+      simple: ROUND_ROBIN
+  
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+
+---
+# 行为服务 - DestinationRule
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: behavior-service
+  namespace: lemo-dev
+spec:
+  host: lemo-service-recommender-behavior
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 2000  # 行为上报量大
+        connectTimeout: 2s
+      http:
+        http1MaxPendingRequests: 200
+        http2MaxRequests: 2000
+    
+    outlierDetection:
+      consecutiveErrors: 10  # 行为上报允许更多失败
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 30  # 最多熔断30%
+    
+    loadBalancer:
+      simple: ROUND_ROBIN
+  
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+

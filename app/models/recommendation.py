@@ -62,6 +62,7 @@ class DebugInfo(BaseModel):
     rank_time_ms: float = Field(..., description="排序耗时（毫秒）")
     rerank_time_ms: float = Field(..., description="重排耗时（毫秒）")
     total_time_ms: float = Field(..., description="总耗时（毫秒）")
+    from_cache: bool = Field(default=False, description="是否来自缓存")
     
     # 各召回策略详情
     recall_strategies: Optional[Dict[str, Any]] = None

@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: lemo-service-recommender-behavior
+  namespace: lemo-dev
+  labels:
+    app: behavior-service
+    version: v1
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8086
+    targetPort: 8086
+    protocol: TCP
+    name: grpc
+  selector:
+    app: behavior-service
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: behavior-service
+  namespace: lemo-dev
+  labels:
+    app: behavior-service
+    version: v1
+spec:
+  replicas: 3  # 行为服务负载高，3副本
+  selector:
+    matchLabels:
+      app: behavior-service
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: behavior-service
+        version: v1
+    spec:
+      containers:
+      - name: behavior-service
+        image: registry.cn-beijing.aliyuncs.com/lemo/recommender:latest
+        imagePullPolicy: Always
+        command: ["python", "services/behavior/main.py"]
+        ports:
+        - containerPort: 8086
+          name: grpc
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: lemo-services-config
+        - secretRef:
+            name: lemo-services-secret
+        env:
+        - name: GRPC_PORT
+          value: "8086"
+        resources:
+          requests:
+            cpu: 300m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+      imagePullSecrets:
+      - name: aliyun-docker-registry
+

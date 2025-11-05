@@ -1,0 +1,41 @@
+# Flink实时特征服务 - Application Mode部署
+# 使用Flink Kubernetes Operator
+
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: flink-realtime-features
+  namespace: lemo-dev
+spec:
+  image: registry.cn-beijing.aliyuncs.com/lemo/recommender-flink:latest
+  flinkVersion: v1_17
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "4"
+    state.backend: rocksdb
+    state.checkpoints.dir: file:///flink/checkpoints
+    state.savepoints.dir: file:///flink/savepoints
+    execution.checkpointing.interval: 60s
+  serviceAccount: flink
+  jobManager:
+    resource:
+      memory: "1024m"
+      cpu: 0.5
+    replicas: 1
+  taskManager:
+    resource:
+      memory: "1024m"
+      cpu: 0.5
+    replicas: 2
+  job:
+    jarURI: local:///opt/flink/usrlib/recommender.jar
+    entryClass: "services.flink_realtime.main"
+    args: []
+    parallelism: 4
+    upgradeMode: savepoint
+    state: running
+  envFrom:
+  - configMapRef:
+      name: lemo-services-config
+  - secretRef:
+      name: lemo-services-secret
+
